@@ -51,21 +51,24 @@ public final class StagingCommands {
             services.messages().send(source, "Capturing '" + selection.name() + "'"
                     + (world.singleplayer() ? " on the integrated server" : " from loaded client chunks") + "...");
 
-            WorldAccess.capture(services, world, selection).whenComplete((capture, error) -> {
-                if (error != null) {
-                    source.getClient().execute(() -> CommandSupport.handleError(source, CommandSupport.unwrap(error)));
-                    return;
-                }
-                source.getClient().execute(() -> {
-                    services.messages().send(source, capture.summary());
-                    for (int i = 0; i < Math.min(5, capture.warnings().size()); i++) {
-                        services.messages().warn(source, capture.warnings().get(i));
-                    }
-                    CommandSupport.complete(services, source,
-                            () -> services.staging().stage(selection, capture.snapshot()),
-                            staged -> onStaged(source, services, world, player, selection, staged));
-                });
-            });
+            var client = source.getClient();
+            WorldAccess.capture(services, world, selection).whenComplete((capture, error) ->
+                    client.execute(() -> {
+                        if (client.player == null || client.level == null) {
+                            return;
+                        }
+                        if (error != null) {
+                            CommandSupport.handleError(source, CommandSupport.unwrap(error));
+                            return;
+                        }
+                        services.messages().send(source, capture.summary());
+                        for (int i = 0; i < Math.min(5, capture.warnings().size()); i++) {
+                            services.messages().warn(source, capture.warnings().get(i));
+                        }
+                        CommandSupport.complete(services, source,
+                                () -> services.staging().stage(selection, capture.snapshot()),
+                                staged -> onStaged(source, services, world, player, selection, staged));
+                    }));
             return 1;
         });
     }
