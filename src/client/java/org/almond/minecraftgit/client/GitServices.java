@@ -10,6 +10,7 @@ import org.almond.minecraftgit.repo.RepoManager;
 import org.almond.minecraftgit.selection.SelectionService;
 import org.almond.minecraftgit.staging.SnapshotStore;
 import org.almond.minecraftgit.staging.StagingService;
+import org.almond.minecraftgit.status.StatusService;
 import org.almond.minecraftgit.world.SnapshotService;
 
 import java.nio.file.Path;
@@ -37,6 +38,7 @@ public final class GitServices implements AutoCloseable {
     private final SnapshotService snapshots;
     private final StagingService staging;
     private final CommitService commits;
+    private final StatusService status;
     private final ExecutorService io;
 
     public GitServices(Path root, ModConfig config, DebugLogger debug) {
@@ -50,6 +52,7 @@ public final class GitServices implements AutoCloseable {
         this.snapshots = new SnapshotService(config, debug);
         this.staging = new StagingService(config.stagingRoot(), new SnapshotStore(), debug);
         this.commits = new CommitService(repos, staging, config, debug, modVersion());
+        this.status = new StatusService(repos, staging, debug);
         ThreadFactory factory = runnable -> {
             Thread thread = new Thread(runnable, "minecraftgit-io");
             thread.setDaemon(true);
@@ -96,6 +99,10 @@ public final class GitServices implements AutoCloseable {
 
     public CommitService commits() {
         return commits;
+    }
+
+    public StatusService status() {
+        return status;
     }
 
     public static String modVersion() {
