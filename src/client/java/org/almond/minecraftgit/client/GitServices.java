@@ -2,6 +2,7 @@ package org.almond.minecraftgit.client;
 
 import org.almond.minecraftgit.config.ModConfig;
 import org.almond.minecraftgit.debug.DebugLogger;
+import org.almond.minecraftgit.repo.RepoManager;
 
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +23,7 @@ public final class GitServices implements AutoCloseable {
     private final ModConfig config;
     private final DebugLogger debug;
     private final Messages messages;
+    private final RepoManager repos;
     private final ExecutorService io;
 
     public GitServices(Path root, ModConfig config, DebugLogger debug) {
@@ -29,6 +31,7 @@ public final class GitServices implements AutoCloseable {
         this.config = config;
         this.debug = debug;
         this.messages = new Messages(config);
+        this.repos = new RepoManager(config, debug);
         ThreadFactory factory = runnable -> {
             Thread thread = new Thread(runnable, "minecraftgit-io");
             thread.setDaemon(true);
@@ -53,6 +56,10 @@ public final class GitServices implements AutoCloseable {
         return messages;
     }
 
+    public RepoManager repos() {
+        return repos;
+    }
+
     public ExecutorService io() {
         return io;
     }
@@ -67,6 +74,7 @@ public final class GitServices implements AutoCloseable {
 
     @Override
     public void close() {
+        repos.close();
         debug.close();
         io.shutdown();
         try {

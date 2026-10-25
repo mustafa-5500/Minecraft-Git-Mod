@@ -1,6 +1,7 @@
 package org.almond.minecraftgit.client.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -19,22 +20,28 @@ public final class GitCommand {
     }
 
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, GitServices services) {
-        dispatcher.register(ClientCommandManager.literal("git")
+        LiteralArgumentBuilder<FabricClientCommandSource> config = ClientCommandManager.literal("config")
+                .executes(context -> showConfig(context.getSource(), services))
+                .then(ClientCommandManager.literal("show")
+                        .executes(context -> showConfig(context.getSource(), services)))
+                .then(ClientCommandManager.literal("debug")
+                        .executes(context -> toggleDebug(context.getSource(), services)))
+                .then(ClientCommandManager.literal("blocks")
+                        .executes(context -> toggleBlocks(context.getSource(), services)));
+        RepoCommands.attachConfig(config, services);
+
+        LiteralArgumentBuilder<FabricClientCommandSource> root = ClientCommandManager.literal("git")
                 .executes(context -> help(context, services))
                 .then(ClientCommandManager.literal("help")
                         .executes(context -> help(context, services)))
                 .then(ClientCommandManager.literal("version")
                         .executes(context -> version(context.getSource(), services)))
-                .then(ClientCommandManager.literal("config")
-                        .executes(context -> showConfig(context.getSource(), services))
-                        .then(ClientCommandManager.literal("show")
-                                .executes(context -> showConfig(context.getSource(), services)))
-                        .then(ClientCommandManager.literal("debug")
-                                .executes(context -> toggleDebug(context.getSource(), services)))
-                        .then(ClientCommandManager.literal("blocks")
-                                .executes(context -> toggleBlocks(context.getSource(), services))))
+                .then(config)
                 .then(ClientCommandManager.literal("debug")
-                        .executes(context -> toggleDebug(context.getSource(), services))));
+                        .executes(context -> toggleDebug(context.getSource(), services)));
+
+        RepoCommands.attach(root, services);
+        dispatcher.register(root);
     }
 
     private static int help(CommandContext<FabricClientCommandSource> context, GitServices services) {
@@ -47,12 +54,16 @@ public final class GitCommand {
             services.messages().raw(source, "Available now:");
             services.messages().raw(source, "  /git help              this help");
             services.messages().raw(source, "  /git version           mod and Minecraft versions");
+            services.messages().raw(source, "  /git init              create this world's repository");
+            services.messages().raw(source, "  /git repo              repository information");
             services.messages().raw(source, "  /git config show       effective settings");
+            services.messages().raw(source, "  /git config author <name> <email>");
             services.messages().raw(source, "  /git config debug      toggle the debug log");
-            services.messages().raw(source, "  /git config blocks     toggle per-block debug logging");
+            services.messages().raw(source, "  /git remote add|remove|list");
+            services.messages().raw(source, "  /git log [count]");
+            services.messages().raw(source, "  /git push [--force], /git fetch [remote]");
             services.messages().raw(source, "");
             services.messages().raw(source, "Coming in the next phases:");
-            services.messages().raw(source, "  /git init, repo, remote, log, push, fetch");
             services.messages().raw(source, "  /git selection ..., /git wand");
             services.messages().raw(source, "  /git add, rm, commit, status, diff");
             services.messages().raw(source, "  /git pull, checkout, pull --abort");
