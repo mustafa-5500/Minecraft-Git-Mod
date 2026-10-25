@@ -72,6 +72,26 @@ public final class CommandSupport {
         }));
     }
 
+    /** Deliver an already-running future's result on the client thread. */
+    public static <T> void completeFuture(FabricClientCommandSource source, CompletableFuture<T> future,
+                                          Consumer<T> success) {
+        Minecraft client = source.getClient();
+        future.whenComplete((value, error) -> client.execute(() -> {
+            if (client.player == null || client.level == null) {
+                return;
+            }
+            if (error != null) {
+                handleError(source, unwrap(error));
+                return;
+            }
+            try {
+                success.accept(value);
+            } catch (Throwable failure) {
+                handleError(source, failure);
+            }
+        }));
+    }
+
     public static void handleError(FabricClientCommandSource source, Throwable error) {
         Throwable cause = unwrap(error);
         if (cause instanceof UserFacingException) {
