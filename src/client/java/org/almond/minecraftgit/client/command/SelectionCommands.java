@@ -219,8 +219,12 @@ public final class SelectionCommands {
             Selection selection = resolve(services, world, player, name);
             Cuboid removed = services.selections().removeCuboid(world.id(), player.getUUID(),
                     selection.name(), index);
-            services.messages().success(source, "Removed cuboid " + index + " (" + removed.dimensions()
-                    + ") from '" + selection.name() + "'. Origin stays at " + selection.origin() + ".");
+            CommandSupport.complete(services, source, () -> {
+                services.staging().restrictStaged(world.id(), player.getUUID(), selection);
+                return removed;
+            }, ignored -> services.messages().success(source, "Removed cuboid " + index + " ("
+                    + removed.dimensions() + ") from '" + selection.name() + "'. Origin stays at "
+                    + selection.origin() + "."));
             return 1;
         });
     }
@@ -231,8 +235,12 @@ public final class SelectionCommands {
             WorldContext world = world(source);
             Selection selection = resolve(services, world, player, name);
             BlockPos previous = services.selections().reorigin(world.id(), player.getUUID(), selection.name());
-            services.messages().success(source, "Re-origined '" + selection.name() + "' from "
-                    + (previous == null ? "unset" : previous) + " to " + selection.origin() + ".");
+            CommandSupport.complete(services, source, () -> {
+                services.staging().rebaseStaged(world.id(), player.getUUID(), selection.name(),
+                        selection.origin());
+                return previous;
+            }, ignored -> services.messages().success(source, "Re-origined '" + selection.name() + "' from "
+                    + (previous == null ? "unset" : previous) + " to " + selection.origin() + "."));
             return 1;
         });
     }
@@ -247,7 +255,10 @@ public final class SelectionCommands {
             if (selection.name().equalsIgnoreCase(active)) {
                 services.selectionManager().setActive(world, player, "");
             }
-            services.messages().success(source, "Deleted selection '" + selection.name() + "'.");
+            CommandSupport.complete(services, source, () -> {
+                services.staging().unstage(world.id(), player.getUUID(), selection.name());
+                return null;
+            }, ignored -> services.messages().success(source, "Deleted selection '" + selection.name() + "'."));
             return 1;
         });
     }
