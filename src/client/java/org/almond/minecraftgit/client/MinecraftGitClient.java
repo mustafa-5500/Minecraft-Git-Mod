@@ -6,6 +6,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import org.almond.minecraftgit.MinecraftGit;
 import org.almond.minecraftgit.client.command.GitCommand;
+import org.almond.minecraftgit.client.selection.SelectionRenderer;
+import org.almond.minecraftgit.client.selection.WandEvents;
 import org.almond.minecraftgit.config.ModConfig;
 import org.almond.minecraftgit.debug.DebugLogger;
 
@@ -36,6 +38,8 @@ public final class MinecraftGitClient implements ClientModInitializer {
 
         ClientCommandRegistrationCallback.EVENT.register(
                 (dispatcher, registryAccess) -> GitCommand.register(dispatcher, services));
+        WandEvents.register(services);
+        SelectionRenderer.register(services);
 
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             if (services != null) {

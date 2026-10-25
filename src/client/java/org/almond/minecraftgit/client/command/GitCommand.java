@@ -41,6 +41,7 @@ public final class GitCommand {
                         .executes(context -> toggleDebug(context.getSource(), services)));
 
         RepoCommands.attach(root, services);
+        SelectionCommands.attach(root, services);
         dispatcher.register(root);
     }
 
@@ -62,9 +63,10 @@ public final class GitCommand {
             services.messages().raw(source, "  /git remote add|remove|list");
             services.messages().raw(source, "  /git log [count]");
             services.messages().raw(source, "  /git push [--force], /git fetch [remote]");
+            services.messages().raw(source, "  /git selection create|list|select|show|add|remove|reorigin|delete|info");
+            services.messages().raw(source, "  /git selection wand|pos1|pos2, /git wand");
             services.messages().raw(source, "");
             services.messages().raw(source, "Coming in the next phases:");
-            services.messages().raw(source, "  /git selection ..., /git wand");
             services.messages().raw(source, "  /git add, rm, commit, status, diff");
             services.messages().raw(source, "  /git pull, checkout, pull --abort");
             services.messages().raw(source, "");

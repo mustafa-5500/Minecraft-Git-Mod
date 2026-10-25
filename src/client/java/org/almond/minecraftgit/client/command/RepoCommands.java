@@ -54,9 +54,15 @@ public final class RepoCommands {
                 .executes(context -> fetch(context.getSource(), services, null))
                 .then(ClientCommandManager.argument("remote", StringArgumentType.string())
                         .suggests((context, builder) -> {
-                            for (RemoteInfo remote : services.repos()
-                                    .service(currentWorld(context.getSource()).id()).remoteList()) {
-                                builder.suggest(remote.name());
+                            try {
+                                WorldContext world = currentWorld(context.getSource());
+                                if (services.repos().isInitialized(world.id())) {
+                                    for (RemoteInfo remote : services.repos().service(world.id()).remoteList()) {
+                                        builder.suggest(remote.name());
+                                    }
+                                }
+                            } catch (RuntimeException ignored) {
+                                // Suggestions must never break command parsing.
                             }
                             return builder.buildFuture();
                         })

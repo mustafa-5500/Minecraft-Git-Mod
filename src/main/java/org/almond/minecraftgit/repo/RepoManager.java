@@ -20,6 +20,7 @@ public final class RepoManager implements AutoCloseable {
     private final RepoLocator locator;
     private final RepoMetadataStore metadataStore;
     private final Map<String, RepoService> services = new ConcurrentHashMap<>();
+    private final Map<String, RepoMetadata> metadataCache = new ConcurrentHashMap<>();
 
     public RepoManager(ModConfig config, DebugLogger debug) {
         this.config = config;
@@ -43,11 +44,12 @@ public final class RepoManager implements AutoCloseable {
     }
 
     public RepoMetadata metadata(String worldId) {
-        return metadataStore.load(worldId, defaults());
+        return metadataCache.computeIfAbsent(worldId, id -> metadataStore.load(id, defaults()));
     }
 
     public void saveMetadata(RepoMetadata metadata) {
         metadataStore.save(metadata);
+        metadataCache.put(metadata.world(), metadata);
     }
 
     public RepoService service(String worldId) {
@@ -111,6 +113,7 @@ public final class RepoManager implements AutoCloseable {
 
     public void reload() {
         close();
+        metadataCache.clear();
     }
 
     private RepoOptions defaults() {
@@ -125,5 +128,6 @@ public final class RepoManager implements AutoCloseable {
     public void close() {
         services.values().forEach(RepoService::close);
         services.clear();
+        metadataCache.clear();
     }
 }
