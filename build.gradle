@@ -12,13 +12,10 @@ base {
     archivesName = project.archives_base_name
 }
 
-// Loom adds the Minecraft, Mojang and Fabric repositories for you. Add extra
-// repositories here only when you depend on other mods or libraries.
+// Loom adds the Minecraft, Mojang and Fabric repositories for you.
+// JGit and its transitive libraries come from Maven Central.
 repositories {
-    // maven {
-    //     name = 'Example Maven'
-    //     url = 'https://example.com/maven'
-    // }
+    mavenCentral()
 }
 
 loom {
@@ -26,14 +23,11 @@ loom {
     splitEnvironmentSourceSets()
 
     mods {
-        "examplemod" {
+        "minecraftgit" {
             sourceSet sourceSets.main
             sourceSet sourceSets.client
         }
     }
-
-    // Uncomment this after adding src/main/resources/examplemod.accesswidener.
-    // accessWidenerPath = file("src/main/resources/examplemod.accesswidener")
 }
 
 dependencies {
@@ -43,8 +37,28 @@ dependencies {
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    // Fabric API is optional, but most mods use it. Remove it if you do not need it.
+    // Fabric API is required for client commands, events and lifecycle hooks.
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    // JGit is a pure-Java Git implementation, so the mod does not need a Git
+    // executable on the player's machine. JavaEWAH is one of JGit's runtime
+    // dependencies and is not present in Minecraft, so both are nested in the
+    // remapped mod jar by Loom's `include` configuration.
+    implementation "org.eclipse.jgit:org.eclipse.jgit:${project.jgit_version}"
+    include "org.eclipse.jgit:org.eclipse.jgit:${project.jgit_version}"
+    include "com.googlecode.javaewah:JavaEWAH:${project.javaewah_version}"
+
+    // Pure-JVM tests for coordinate math, CSV round-trips and JGit repositories.
+    testImplementation "org.junit.jupiter:junit-jupiter:${project.junit_version}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:${project.junit_platform_version}"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging {
+        events 'failed'
+        exceptionFormat 'full'
+    }
 }
 
 // ---------------------------------------------------------------------------
