@@ -4,9 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ServerData;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.GameType;
@@ -35,9 +33,15 @@ public record WorldContext(String id, String displayName, ResourceKey<Level> dim
             name = server.getWorldData().getLevelName();
         } else {
             ServerData data = client.getCurrentServer();
-            name = data == null || data.name == null || data.name.isBlank()
-                    ? (data == null ? "multiplayer" : data.ip)
-                    : data.name;
+            if (data == null) {
+                name = "multiplayer";
+            } else {
+                String base = data.name == null || data.name.isBlank() ? data.ip : data.name;
+                // Include the address so two servers with the same display name do
+                // not share a local repository or selection list.
+                name = data.ip == null || data.ip.isBlank() || base.contains(data.ip)
+                        ? base : base + "_" + data.ip;
+            }
         }
         ResourceKey<Level> dimension = level.dimension();
         String dimensionName = dimension.location().getPath();
@@ -51,8 +55,7 @@ public record WorldContext(String id, String displayName, ResourceKey<Level> dim
         if (server == null) {
             return null;
         }
-        ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, dimension.location());
-        return server.getLevel(key);
+        return server.getLevel(dimension);
     }
 
     public String gameMode(Minecraft client) {

@@ -147,8 +147,8 @@ public final class RepoService implements AutoCloseable {
             Files.writeString(readme, """
                     # MinecraftGit repository
 
-                    This repository is managed by the MinecraftGit plugin. Each named
-                    selection is stored as text so normal Git tooling can inspect history:
+                    This repository is managed by MinecraftGit. Each named selection is
+                    stored as text so normal Git tooling can inspect history:
 
                     ```
                     <selection>/y_<y>/<quadrant>.csv

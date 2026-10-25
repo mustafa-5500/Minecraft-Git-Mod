@@ -79,7 +79,7 @@ class StatusServiceTest {
     @Test
     void untrackedSelectionIsReported() {
         StatusService.Report report = status.report(WORLD, OWNER, List.of(selection),
-                Map.of("castle", snapshot("minecraft:stone")), Set.of());
+                Map.of("castle", snapshot("minecraft:stone")), Set.of(), Set.of());
         StatusService.SelectionStatus result = report.selections().get(0);
         assertTrue(result.untracked());
         assertFalse(result.inHead());
@@ -91,7 +91,7 @@ class StatusServiceTest {
         commit(snapshot("minecraft:stone"));
 
         StatusService.Report report = status.report(WORLD, OWNER, List.of(selection),
-                Map.of("castle", snapshot("minecraft:stone")), Set.of());
+                Map.of("castle", snapshot("minecraft:stone")), Set.of(), Set.of());
         StatusService.SelectionStatus result = report.selections().get(0);
         assertTrue(result.inHead());
         assertTrue(result.clean());
@@ -104,7 +104,7 @@ class StatusServiceTest {
         commit(snapshot("minecraft:stone"));
 
         StatusService.Report report = status.report(WORLD, OWNER, List.of(selection),
-                Map.of("castle", snapshot("minecraft:gold_block")), Set.of());
+                Map.of("castle", snapshot("minecraft:gold_block")), Set.of(), Set.of());
         StatusService.SelectionStatus result = report.selections().get(0);
         assertFalse(result.clean());
         assertTrue(result.dirty());
@@ -117,7 +117,7 @@ class StatusServiceTest {
         staging.stage(selection, snapshot("minecraft:gold_block"));
 
         StatusService.Report report = status.report(WORLD, OWNER, List.of(selection),
-                Map.of("castle", snapshot("minecraft:stone")), Set.of());
+                Map.of("castle", snapshot("minecraft:stone")), Set.of(), Set.of());
         StatusService.SelectionStatus result = report.selections().get(0);
         assertTrue(result.staged());
         assertEquals(1, result.stagedDiff().changed());
@@ -128,16 +128,28 @@ class StatusServiceTest {
     void diffReportsCoordinateLevelSamples() {
         commit(snapshot("minecraft:stone"));
         StatusService.DiffReport report = status.diff(WORLD, OWNER, selection,
-                snapshot("minecraft:gold_block"), false);
+                snapshot("minecraft:gold_block"), false, false);
         assertEquals(1, report.workingDiff().changed().size());
         assertEquals("minecraft:gold_block", report.workingDiff().changed().get(0).blockData());
         assertEquals(0, report.workingDiff().changed().get(0).rx());
     }
 
     @Test
+    void incompleteCaptureIsReportedWithoutAFalseWorkingDiff() {
+        commit(snapshot("minecraft:stone"));
+
+        StatusService.Report report = status.report(WORLD, OWNER, List.of(selection),
+                Map.of("castle", snapshot("minecraft:stone")), Set.of(), Set.of("castle"));
+        StatusService.SelectionStatus result = report.selections().get(0);
+        assertFalse(result.currentChecked());
+        assertEquals(0, result.workingDiff().total());
+        assertTrue(result.note().contains("unloaded chunks"));
+    }
+
+    @Test
     void tooLargeSelectionIsNotCaptured() {
         StatusService.Report report = status.report(WORLD, OWNER, List.of(selection), Map.of(),
-                Set.of("castle"));
+                Set.of("castle"), Set.of());
         StatusService.SelectionStatus result = report.selections().get(0);
         assertTrue(result.tooLarge());
         assertFalse(result.currentChecked());

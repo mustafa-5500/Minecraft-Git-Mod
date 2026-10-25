@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 
 /**
  * Local pre-apply snapshots so a pull or checkout can be undone. Backups are
- * gzipped binary snapshots under the plugin data folder and are pruned to the
+ * gzipped binary snapshots under the mod data folder and are pruned to the
  * configured maximum.
  */
 public final class BackupService {

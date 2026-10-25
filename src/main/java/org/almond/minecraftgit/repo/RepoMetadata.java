@@ -4,7 +4,7 @@ import java.time.Instant;
 
 /**
  * Per-world, local-only repository state. This file is never committed: it maps
- * plugin concepts (world name, default remote, author) onto Git concepts and may
+ * mod concepts (world id, default remote, author) onto Git concepts and may
  * differ between machines that share the same repository.
  */
 public final class RepoMetadata {

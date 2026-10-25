@@ -40,6 +40,15 @@ public final class PullService {
                 throw new PullException("Selection '" + onlySelection + "' is not in the remote commit "
                         + shortId(plan.remoteHead()) + ".");
             }
+            if (remoteNames.size() > 1) {
+                // A fast-forward moves the branch to the whole remote tree. Applying
+                // only one selection would leave the other selections in HEAD but
+                // not in the world, so partial pulls are refused rather than
+                // silently desynchronizing the branch from the world.
+                throw new PullException("This remote contains " + remoteNames.size()
+                        + " selections. Pull all of them with /git pull; partial pulls are not "
+                        + "supported in version 1.");
+            }
         }
         if (remoteNames.isEmpty()) {
             return List.of();

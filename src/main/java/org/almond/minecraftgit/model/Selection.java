@@ -10,7 +10,7 @@ import java.util.UUID;
 /**
  * A named, multi-cuboid build selection owned by one player in one world.
  *
- * <p>Selections are persisted per world + player in the plugin data folder and
+ * <p>Selections are persisted per world id + player in the mod data folder and
  * are never committed. The origin is the absolute world position that relative
  * repository coordinates are measured from. It is set by the first cuboid and
  * deliberately does <em>not</em> move when that cuboid is removed (E2); only an

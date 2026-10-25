@@ -9,7 +9,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
 import org.almond.minecraftgit.client.GitServices;
 import org.almond.minecraftgit.client.WorldContext;
 import org.almond.minecraftgit.model.BlockPos;
@@ -97,11 +96,5 @@ public final class WandEvents {
 
     static void actionBar(Player player, String message) {
         player.displayClientMessage(Component.literal(message).withStyle(ChatFormatting.AQUA), true);
-    }
-
-    /** Level type is kept in the signatures above to match Fabric's callback shapes. */
-    @SuppressWarnings("unused")
-    private static boolean isClientLevel(Level level) {
-        return level instanceof ClientLevel;
     }
 }

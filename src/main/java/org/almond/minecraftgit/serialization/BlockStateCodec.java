@@ -61,7 +61,7 @@ public final class BlockStateCodec {
             base = base.substring(0, open);
         }
         ResourceLocation id = ResourceLocation.tryParse(base);
-        if (id == null) {
+        if (id == null || !BuiltInRegistries.BLOCK.containsKey(id)) {
             return Blocks.AIR.defaultBlockState();
         }
         Block block = BuiltInRegistries.BLOCK.get(id);
@@ -97,5 +97,19 @@ public final class BlockStateCodec {
 
     public static boolean isAir(String blockData) {
         return blockData == null || decode(blockData).isAir();
+    }
+
+    /** True when the block id exists in this registry (properties are optional). */
+    public static boolean isKnown(String blockData) {
+        if (blockData == null || blockData.isBlank()) {
+            return false;
+        }
+        String base = blockData.trim();
+        int open = base.indexOf('[');
+        if (open >= 0) {
+            base = base.substring(0, open);
+        }
+        ResourceLocation id = ResourceLocation.tryParse(base);
+        return id != null && BuiltInRegistries.BLOCK.containsKey(id);
     }
 }

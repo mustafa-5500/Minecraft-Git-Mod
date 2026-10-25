@@ -5,8 +5,10 @@ and [Git Minecraft Plugin Thoughts.md](Git%20Minecraft%20Plugin%20Thoughts.md). 
 plugin's data format, repository layout, and user workflow, but replaces every Bukkit/server-side
 assumption with a Fabric client-side equivalent.
 
-> **Status — 2026-10-24:** implementation started. This document is the working plan for the
-> client mod. Phase status is updated as features land on `develop`.
+> **Status — 2026-10-24:** Phases M0–M8 are implemented on feature branches and merged into the
+> local `develop` branch. M9 (documentation, dev log, final verification) is in progress. The
+> automated suite, the remapped jar contents (nested JGit/JavaEWAH), and a client startup smoke
+> test pass; the single-player apply/round-trip checklist still needs a windowed manual run.
 
 ## 1. What changes when Git moves to the client
 
@@ -143,12 +145,14 @@ All local state lives under `FabricLoader.getConfigDir()/minecraftgit/`:
 `worldId` is `<safeWorldName>__<dimensionPath>` (for example `world__overworld`). This keeps
 Overworld/Nether/End repositories from sharing coordinates without changing the commit format.
 In single-player `safeWorldName` comes from the integrated server's level name; in multiplayer it
-comes from the current server entry/address. Selections always name one worldId.
+combines the server display name with the server address so identically named servers stay
+isolated. Selections always name one worldId.
 
 ## 5. Phase plan (adapted to the client)
 
 ### Phase M0 — Bootstrap and client shell
-**Status:** in progress on `feature/bootstrap`.
+**Status:** ✅ Implemented on `feature/bootstrap`. The remapped jar nests JGit and JavaEWAH; a
+development client starts and logs both `JGit is available` and `Minecraft Git initialized`.
 
 - Rebrand the template to Minecraft Git: package `org.almond.minecraftgit`, mod id `minecraftgit`,
   client-only metadata, no example item/mixin, no server entrypoint.
@@ -163,6 +167,9 @@ comes from the current server entry/address. Selections always name one worldId.
 **Done when:** the mod builds, the client initializer runs, `/git help` works, and JGit loads.
 
 ### Phase M1 — Repo lifecycle and commands
+**Status:** ✅ Implemented on `feature/repo-lifecycle`. JGit integration tests cover init, workspace
+commits, push to a bare remote, fetch, and fast-forward planning.
+
 - Port `RepoService` (JGit facade), `RepoManager`, `RepoMetadata`, `RepoMetadataStore`,
   `RepoLocator`, `RepoOptions`, and `CommitMeta` from the plugin, replacing plugin paths with
   `configDir/minecraftgit` and `World` with worldId strings.
@@ -176,6 +183,9 @@ comes from the current server entry/address. Selections always name one worldId.
 **Done when:** `/git init` creates a repo and `/git push` moves a commit to a local bare repo.
 
 ### Phase M2 — Selections and the wand
+**Status:** ✅ Implemented on `feature/selection`. Selection metadata and cuboid ordering are tested;
+the wand uses vanilla custom data and returns `InteractionResult.FAIL` so no packet is sent.
+
 - Port `BlockPos`, `Cuboid`, `Selection`, `SelectionMetadataStore`, and `SelectionService` with a
   worldId instead of a Bukkit world.
 - Wand: a vanilla configurable item (default wooden shovel) tagged with custom data through
@@ -189,6 +199,11 @@ comes from the current server entry/address. Selections always name one worldId.
 **Done when:** a player can build a multi-cuboid selection, restart the game, and still see it.
 
 ### Phase M3 — Capture and serialization
+**Status:** ✅ Implemented on `feature/snapshot`. CSV/model tests pass for all quadrants, sparse
+coordinates, tracked air vs empty, entities, and block-entity payloads. **Deviation:** block
+entities use native SNBT (`nbt:` prefix) rather than the plugin's typed JSON, and multiplayer
+capture can only see client-loaded chunks.
+
 - Port `Snapshot`, `BlockSnapshot`, `EntitySnapshot`, `CaptureResult`, and the quadrant CSV
   writer/reader. Keep the plugin's headers and cell layout byte-compatible.
 - `BlockStateCodec`: canonical block id + sorted properties; registry-safe decode with air
@@ -205,6 +220,9 @@ comes from the current server entry/address. Selections always name one worldId.
 **Done when:** capture → write CSV → read back → diff is empty for a known test region.
 
 ### Phase M4 — Staging
+**Status:** ✅ Implemented on `feature/staging`. Gzip snapshot round-trips, restrict-after-remove,
+and reorigin rebasing are tested.
+
 - Port `SnapshotStore` (gzip binary) and `StagingService`.
 - `/git add [selection]` captures through the correct side (client or integrated server), writes
   the staged snapshot, and marks the selection tracked.
@@ -214,6 +232,9 @@ comes from the current server entry/address. Selections always name one worldId.
 **Done when:** add → remove a cuboid → add in one session commits the intended coordinate set.
 
 ### Phase M5 — Commit
+**Status:** ✅ Implemented on `feature/commit`. Commit-service tests verify the CSV tree, metadata,
+second-commit counts, unchanged staging rejection, and explicit empty commits.
+
 - Port `BuildDiff`, `CommitRequest`, `CommitResult`, `CommitService`, and `CommitMeta`.
 - Write `<selection>/y_<y>/<quadrant>.csv`, `entities.csv`, and `meta.json`; create one commit for
   all staged changes; record absolute origin, previous origin, and reorigined flag.
@@ -223,6 +244,9 @@ comes from the current server entry/address. Selections always name one worldId.
 **Done when:** two commits show an intelligible `git log -p` diff, including a reorigin commit.
 
 ### Phase M6 — Status and diff
+**Status:** ✅ Implemented on `feature/status`. Reports untracked/clean/dirty/staged counts and
+coordinate samples; status capture is volume-capped. **Deviation:** no TTL capture cache yet.
+
 - `StatusService` compares HEAD, staged snapshot, and a fresh capture using relative coordinates.
 - `/git status` reports untracked/tracked/clean/dirty and added/changed/removed counts.
 - `/git diff [selection]` shows counts plus a few sample coordinates.
@@ -231,6 +255,9 @@ comes from the current server entry/address. Selections always name one worldId.
 **Done when:** status on a 3-cuboid selection reports correct counts after edits.
 
 ### Phase M7 — Sync planning
+**Status:** ✅ Implemented on `feature/sync-apply`. Pull planning, export, and checkout preparation
+are covered by real-repository tests.
+
 - Port `PullPlan`, remote fetch/classification, pristine-init handling, and `PullService` tree
   export/read. Pull is fast-forward-only; divergence is refused with guidance.
 - Push/fetch support local paths and anonymous HTTP. SSH remains unsupported (JGit SSH module not
@@ -241,6 +268,12 @@ comes from the current server entry/address. Selections always name one worldId.
 **Done when:** a build committed in world A is fetched and planned into world B.
 
 ### Phase M8 — Apply, checkout, backups
+**Status:** ✅ Implemented on `feature/sync-apply`. `ApplyPlan` and `BackupService` are unit-tested;
+`ApplyService` writes through the integrated server in tick batches. Partial pulls are refused when
+the remote contains more than one selection because a fast-forward would desynchronize the branch
+from the world. **Gap:** the full in-world apply/checkout/abort round trip remains a manual
+checklist because this environment cannot join a world offline.
+
 - `ApplyPlan` converts relative coordinates + local origin into absolute writes; moved origins
   remove the old copy and place the new one.
 - `ApplyService` runs on the integrated server, writes in `apply.blocks-per-tick` batches, applies
@@ -255,10 +288,38 @@ comes from the current server entry/address. Selections always name one worldId.
 **Done when:** push from world A → pull into world B reproduces the build and re-capture diff = 0.
 
 ### Phase M9 — Documentation and verification
-- README, DEVOPS, `Documentation/Git-Format.md`, `Documentation/Testing.md`, and a dev-log entry.
-- `./gradlew build` with unit tests; inspect the remapped jar for nested JGit; run the client once
-  to confirm entrypoint/command registration if the environment allows a window.
-- Update the status table in this plan.
+**Status:** ✅ Implemented on `feature/docs`. README/DEVOPS were rewritten, the format and test
+documents were added, and the phase status/evidence table was updated. `clean build` passes with 64
+tests, the remapped jar nests JGit/JavaEWAH, and the client starts with the mod initialized. The
+manual in-world apply/round-trip checklist remains outstanding because this environment cannot
+download assets or join a world offline.
+
+### Implementation evidence
+
+Each feature was developed in a worktree, squashed to one commit, and merged with `--no-ff` into
+local `develop`; feature branch names are retained.
+
+| Phase | Branch | Squashed commit | Merge |
+|---|---|---|---|
+| M0 | `feature/bootstrap` | `4345c4f` | `74bdf11` |
+| M1 | `feature/repo-lifecycle` | `7bd104a` | `6f6de90` |
+| M2 | `feature/selection` | `80d95cc` | `53782de` |
+| M3 | `feature/snapshot` | `427d087` | `e3d1449` |
+| M4 | `feature/staging` | `e937ee2` | `853b410` |
+| M5 | `feature/commit` | `2a73d2d` | `c962a87` |
+| M6 | `feature/status` | `836ba65` | `4f50914` |
+| M7/M8 | `feature/sync-apply` | `30d49f0` | `f945262` |
+
+M9 is documented on `feature/docs`; its squash/merge is the final step after verification.
+
+Automated evidence: the JUnit suite runs from `./gradlew --offline test` (64 test methods in 17
+suites, 0 failures), and `./gradlew --offline clean build` completes successfully. Jar evidence:
+`minecraftgit-1.0.0.jar` contains
+`META-INF/jars/org.eclipse.jgit-6.10.0.202406032230-r.jar` and `META-INF/jars/JavaEWAH-1.2.3.jar`,
+and `fabric.mod.json` has the matching `jars` entries. Client evidence: `runClient` (with
+`-x downloadAssets` because assets are unavailable offline) logged `JGit is available to Minecraft
+Git` and `Minecraft Git initialized` with no mod-related errors. The 64-test suite also bootstraps
+Minecraft's registries to round-trip real block states through `BlockStateCodec`.
 
 ## 6. Edge-case register (client-specific additions)
 
@@ -275,7 +336,7 @@ comes from the current server entry/address. Selections always name one worldId.
 | C9 | Block-entity NBT unavailable on the client | Capture what the client has; prefer the integrated server in single-player; cap payload bytes. |
 | C10 | Plugin JSON block-entity payload | Detect `{` payloads that are not SNBT, skip with a warning; block data still applies. |
 | C11 | Wand item in offhand / other hand | Only main-hand interactions are captured. |
-| C12 | Wand clicks would break/place blocks | Return `ActionResult.FAIL` client-side so no packet is sent. |
+| C12 | Wand clicks would break/place blocks | Return `InteractionResult.FAIL` client-side so no packet is sent. |
 | C13 | Selection origin removed | Same as plugin E2: origin stays; reorigin is explicit. |
 | C14 | Staged snapshot from another dimension | Staging is keyed by worldId; no cross-dimension reads. |
 | C15 | JGit bundled-jar visibility | Verify the remapped jar nests JGit and JavaEWAH; add a startup log line. |

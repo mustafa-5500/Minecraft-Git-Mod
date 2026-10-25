@@ -293,8 +293,10 @@ public final class PullCommands {
             CommandSupport.complete(services, source,
                     () -> services.pull().prepareCheckout(selection, repo, commit),
                     prepared -> {
+                        // The local build lives at the selection's local origin, not
+                        // at the absolute origin recorded in the remote commit meta.
                         ApplyPlan plan = ApplyPlan.between(selection, prepared.localHead(),
-                                prepared.localHeadOrigin(), prepared.target(), selection.origin(), true);
+                                selection.origin(), prepared.target(), selection.origin(), true);
                         services.messages().send(source, "Applying " + shortId(commit) + " into '"
                                 + selection.name() + "'...");
                         CommandSupport.completeFuture(source, services.apply().apply(world, plan), result -> {

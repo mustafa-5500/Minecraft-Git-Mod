@@ -127,9 +127,14 @@ public final class GitServices implements AutoCloseable {
     }
 
     public static String modVersion() {
-        return FabricLoader.getInstance().getModContainer(MinecraftGit.MOD_ID)
-                .map(container -> container.getMetadata().getVersion().getFriendlyString())
-                .orElse("development");
+        try {
+            return FabricLoader.getInstance().getModContainer(MinecraftGit.MOD_ID)
+                    .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                    .orElse("development");
+        } catch (RuntimeException e) {
+            // Fabric Loader is not present in plain-JVM unit tests.
+            return "development";
+        }
     }
 
     public ExecutorService io() {

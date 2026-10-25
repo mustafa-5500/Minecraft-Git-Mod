@@ -10,8 +10,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Owns the per-world-id {@link RepoService} instances and their local metadata.
- * A "world" here is the client's {@code <world>__<dimension>} key, not a Bukkit
- * world.
+ * A "world" here is the client's {@code <world>__<dimension>} key, not a
+ * server world object.
  */
 public final class RepoManager implements AutoCloseable {
 
