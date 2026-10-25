@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+.gradle-home/
+build/
+
+# Loom run directories and caches
+run/
+.loom/
+.loom-cache/
+.remapped/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+out/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

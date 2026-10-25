@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "examplemod",
+  "version": "${version}",
+  "name": "Example Mod",
+  "description": "A small Fabric mod template that registers an item, a command and a mixin.",
+  "authors": [
+    "Your Name"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/your-name/fabric-mod-template"
+  },
+  "license": "CC0-1.0",
+  "icon": "assets/examplemod/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.example.examplemod.ExampleMod"
+    ],
+    "client": [
+      "com.example.examplemod.client.ExampleModClient"
+    ]
+  },
+  "mixins": [
+    "examplemod.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "~${minecraft_version}",
+    "java": ">=${java_version}",
+    "fabric-api": "*"
+  }
+}

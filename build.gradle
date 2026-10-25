@@ -1,0 +1,118 @@
+plugins {
+    // The -remap variant is used for obfuscated Minecraft versions such as 1.21.x.
+    // Use 'net.fabricmc.fabric-loom' for the unobfuscated 26.x versions.
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+// Loom adds the Minecraft, Mojang and Fabric repositories for you. Add extra
+// repositories here only when you depend on other mods or libraries.
+repositories {
+    // maven {
+    //     name = 'Example Maven'
+    //     url = 'https://example.com/maven'
+    // }
+}
+
+loom {
+    // Keep client-only code in src/client so it never loads on a dedicated server.
+    splitEnvironmentSourceSets()
+
+    mods {
+        "examplemod" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+
+    // Uncomment this after adding src/main/resources/examplemod.accesswidener.
+    // accessWidenerPath = file("src/main/resources/examplemod.accesswidener")
+}
+
+dependencies {
+    // Versions are defined in gradle.properties. Check https://fabricmc.net/develop
+    // for the latest combination for your Minecraft version.
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    // Fabric API is optional, but most mods use it. Remove it if you do not need it.
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+// ---------------------------------------------------------------------------
+// Resource processing - inject Gradle properties into fabric.mod.json
+// ---------------------------------------------------------------------------
+def resourceProperties = [
+        version          : project.version,
+        minecraft_version: project.minecraft_version,
+        loader_version   : project.loader_version,
+        java_version     : project.java_version
+]
+
+processResources {
+    inputs.properties(resourceProperties)
+
+    filesMatching('fabric.mod.json') {
+        expand(resourceProperties)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Compilation settings
+// ---------------------------------------------------------------------------
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = project.java_version.toInteger()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(project.java_version.toInteger())
+    }
+    // Also publish a sources jar; Loom includes it in the build.
+    withSourcesJar()
+}
+
+// ---------------------------------------------------------------------------
+// Publishing
+// ---------------------------------------------------------------------------
+publishing {
+    publications {
+        create('mavenJava', MavenPublication) {
+            artifactId = project.archives_base_name
+            from components.java
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Dev log
+// ---------------------------------------------------------------------------
+// Create or open today's dev log without needing dev-log on the PATH.
+// Usage: gradlew devLog [-Pdate=YYYY-MM-DD] [-Pdeveloper="Name"] [-PnoOpen]
+tasks.register('devLog', Exec) {
+    group = 'documentation'
+    description = "Create or open today's dev log entry (Utils/dev-log-generator)."
+    workingDir = projectDir
+
+    def scriptArgs = ["${projectDir}/Utils/dev-log-generator/generate_dev_log.py"]
+    if (project.hasProperty('date')) {
+        scriptArgs += ['--date', project.property('date')]
+    }
+    if (project.hasProperty('developer')) {
+        scriptArgs += ['--developer', project.property('developer')]
+    }
+    if (project.hasProperty('noOpen')) {
+        scriptArgs += ['--no-open']
+    }
+
+    commandLine(['python', *scriptArgs])
+}
