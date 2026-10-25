@@ -163,7 +163,8 @@ entities are carried in the cell as Base64 native NBT with an `nbt:` prefix.
 **Compatibility note:** the Paper plugin stored block-entity data as typed JSON. The mod stores
 fuller native NBT. When applying a plugin commit, block states and entities still apply, but the
 plugin's JSON block-entity payloads are skipped with a warning. Commits made by the mod are readable
-by the plugin's CSV reader; the plugin would ignore the `nbt:` payloads the same way.
+by the plugin's CSV reader; the plugin would fail to parse the `nbt:` block-entity payload and skip
+that block entity, while still applying the block state.
 
 ## Limitations
 
