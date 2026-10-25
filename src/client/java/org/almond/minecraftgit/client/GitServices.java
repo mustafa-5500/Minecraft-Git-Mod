@@ -5,6 +5,7 @@ import org.almond.minecraftgit.client.selection.SelectionManager;
 import org.almond.minecraftgit.debug.DebugLogger;
 import org.almond.minecraftgit.repo.RepoManager;
 import org.almond.minecraftgit.selection.SelectionService;
+import org.almond.minecraftgit.world.SnapshotService;
 
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
@@ -28,6 +29,7 @@ public final class GitServices implements AutoCloseable {
     private final RepoManager repos;
     private final SelectionService selections;
     private final SelectionManager selectionManager;
+    private final SnapshotService snapshots;
     private final ExecutorService io;
 
     public GitServices(Path root, ModConfig config, DebugLogger debug) {
@@ -38,6 +40,7 @@ public final class GitServices implements AutoCloseable {
         this.repos = new RepoManager(config, debug);
         this.selections = new SelectionService(config);
         this.selectionManager = new SelectionManager(selections, repos);
+        this.snapshots = new SnapshotService(config, debug);
         ThreadFactory factory = runnable -> {
             Thread thread = new Thread(runnable, "minecraftgit-io");
             thread.setDaemon(true);
@@ -72,6 +75,10 @@ public final class GitServices implements AutoCloseable {
 
     public SelectionManager selectionManager() {
         return selectionManager;
+    }
+
+    public SnapshotService snapshots() {
+        return snapshots;
     }
 
     public ExecutorService io() {
