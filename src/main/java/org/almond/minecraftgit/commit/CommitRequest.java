@@ -1,0 +1,7 @@
+package org.almond.minecraftgit.commit;
+
+/** Immutable inputs for a commit, captured on the server thread. */
+public record CommitRequest(String playerName, String playerUuid, String worldName, String gameMode,
+                            java.util.List<org.almond.minecraftgit.model.Selection> selections,
+                            String message, boolean allowEmpty) {
+}

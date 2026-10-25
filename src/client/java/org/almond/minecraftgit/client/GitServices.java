@@ -1,5 +1,8 @@
 package org.almond.minecraftgit.client;
 
+import net.fabricmc.loader.api.FabricLoader;
+import org.almond.minecraftgit.MinecraftGit;
+import org.almond.minecraftgit.commit.CommitService;
 import org.almond.minecraftgit.config.ModConfig;
 import org.almond.minecraftgit.client.selection.SelectionManager;
 import org.almond.minecraftgit.debug.DebugLogger;
@@ -33,6 +36,7 @@ public final class GitServices implements AutoCloseable {
     private final SelectionManager selectionManager;
     private final SnapshotService snapshots;
     private final StagingService staging;
+    private final CommitService commits;
     private final ExecutorService io;
 
     public GitServices(Path root, ModConfig config, DebugLogger debug) {
@@ -45,6 +49,7 @@ public final class GitServices implements AutoCloseable {
         this.selectionManager = new SelectionManager(selections, repos);
         this.snapshots = new SnapshotService(config, debug);
         this.staging = new StagingService(config.stagingRoot(), new SnapshotStore(), debug);
+        this.commits = new CommitService(repos, staging, config, debug, modVersion());
         ThreadFactory factory = runnable -> {
             Thread thread = new Thread(runnable, "minecraftgit-io");
             thread.setDaemon(true);
@@ -87,6 +92,16 @@ public final class GitServices implements AutoCloseable {
 
     public StagingService staging() {
         return staging;
+    }
+
+    public CommitService commits() {
+        return commits;
+    }
+
+    public static String modVersion() {
+        return FabricLoader.getInstance().getModContainer(MinecraftGit.MOD_ID)
+                .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                .orElse("development");
     }
 
     public ExecutorService io() {
