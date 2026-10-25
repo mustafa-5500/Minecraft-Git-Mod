@@ -2,7 +2,7 @@ package org.almond.minecraftgit.repo;
 
 /**
  * Immutable repository configuration used by {@link RepoService}. Keeping this
- * free of Bukkit types lets the whole repository layer run in plain JVM tests.
+ * free of Minecraft types lets the whole repository layer run in plain JVM tests.
  */
 public record RepoOptions(String branch, String defaultRemote, String authorName, String authorEmail) {
 

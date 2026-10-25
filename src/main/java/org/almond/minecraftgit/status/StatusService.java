@@ -39,7 +39,7 @@ public final class StatusService {
     }
 
     public Report report(String worldId, UUID owner, List<Selection> selections,
-                         Map<String, Snapshot> current, Set<String> tooLarge) {
+                         Map<String, Snapshot> current, Set<String> tooLarge, Set<String> incomplete) {
         RepoService repo = repos.service(worldId);
         boolean initialized = repo.isInitialized();
         String branch = "";
@@ -55,14 +55,14 @@ public final class StatusService {
         List<SelectionStatus> statuses = new ArrayList<>();
         for (Selection selection : selections) {
             statuses.add(statusOf(initialized, repo, selection, current.get(selection.name()),
-                    tooLarge.contains(selection.name())));
+                    tooLarge.contains(selection.name()), incomplete.contains(selection.name())));
         }
         statuses.sort(Comparator.comparing(status -> status.name().toLowerCase(java.util.Locale.ROOT)));
         return new Report(initialized, branch, head, statuses);
     }
 
     public DiffReport diff(String worldId, UUID owner, Selection selection, Snapshot current,
-                           boolean tooLarge) {
+                           boolean tooLarge, boolean incomplete) {
         RepoService repo = repos.service(worldId);
         boolean initialized = repo.isInitialized();
         Snapshot head = initialized ? readHead(repo, selection) : null;
@@ -75,14 +75,14 @@ public final class StatusService {
         BuildDiff stagedDiff = BuildDiff.between(head == null
                         ? Snapshot.empty(selection.name(), base.origin()) : head,
                 stagedSnapshot == null ? base : stagedSnapshot);
-        BuildDiff workingDiff = current == null ? BuildDiff.between(null, null)
+        BuildDiff workingDiff = current == null || incomplete ? BuildDiff.between(null, null)
                 : BuildDiff.between(base, current);
-        SelectionStatus status = statusOf(initialized, repo, selection, current, tooLarge);
+        SelectionStatus status = statusOf(initialized, repo, selection, current, tooLarge, incomplete);
         return new DiffReport(status, stagedDiff, workingDiff, current);
     }
 
     private SelectionStatus statusOf(boolean initialized, RepoService repo, Selection selection,
-                                     Snapshot current, boolean tooLarge) {
+                                     Snapshot current, boolean tooLarge, boolean incomplete) {
         Optional<StagedSelection> staged = loadStaged(selection.world(), selection.owner(), selection);
         Snapshot head = initialized ? readHead(repo, selection) : null;
         boolean inHead = head != null;
@@ -96,7 +96,7 @@ public final class StatusService {
         }
 
         DiffCounts workingCounts = DiffCounts.zero();
-        if (current != null) {
+        if (current != null && !incomplete) {
             Snapshot base;
             if (staged.isPresent()) {
                 base = staged.get().snapshot();
@@ -108,12 +108,14 @@ public final class StatusService {
             workingCounts = DiffCounts.of(BuildDiff.between(base, current));
         } else if (tooLarge) {
             note = "selection volume exceeds the status capture limit";
+        } else if (incomplete) {
+            note = "current capture skipped unloaded chunks; working diff omitted";
         } else if (selection.isTracked() || inHead || staged.isPresent()) {
             note = "current blocks were not captured";
         }
 
         return new SelectionStatus(selection.name(), selection.isTracked(), inHead, staged.isPresent(),
-                selection.cuboidCount(), selection.volume(), current != null, tooLarge,
+                selection.cuboidCount(), selection.volume(), current != null && !incomplete, tooLarge,
                 stagedCounts, workingCounts, note);
     }
 

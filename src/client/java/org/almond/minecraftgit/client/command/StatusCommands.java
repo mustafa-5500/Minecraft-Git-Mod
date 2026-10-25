@@ -15,6 +15,7 @@ import org.almond.minecraftgit.model.Selection;
 import org.almond.minecraftgit.model.Snapshot;
 import org.almond.minecraftgit.selection.SelectionException;
 import org.almond.minecraftgit.status.StatusService;
+import org.almond.minecraftgit.world.CaptureResult;
 
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -56,6 +57,7 @@ public final class StatusCommands {
             boolean initialized = services.repos().isInitialized(world.id());
             List<Selection> candidates = new ArrayList<>();
             Set<String> tooLarge = new HashSet<>();
+            Set<String> incomplete = new HashSet<>();
             for (Selection selection : selections) {
                 boolean inHead = initialized && Files.isDirectory(
                         services.repos().repoPath(world.id()).resolve(selection.name()));
@@ -74,6 +76,9 @@ public final class StatusCommands {
             for (Selection selection : candidates) {
                 chain = chain.thenCompose(map -> WorldAccess.capture(services, world, selection)
                         .thenApply(result -> {
+                            if (result.partial()) {
+                                incomplete.add(selection.name());
+                            }
                             map.put(selection.name(), result.snapshot());
                             return map;
                         }));
@@ -81,7 +86,7 @@ public final class StatusCommands {
 
             CompletableFuture<StatusService.Report> report = chain.thenCompose(current ->
                     services.async(() -> services.status().report(world.id(), player.getUUID(),
-                            selections, current, tooLarge)));
+                            selections, current, tooLarge, incomplete)));
             CommandSupport.completeFuture(source, report, value -> showStatus(source, services, world, value));
             return 1;
         });
@@ -128,13 +133,15 @@ public final class StatusCommands {
             Selection selection = resolve(services, world, player, requested);
             boolean tooLarge = selection.volume() > services.config().statusMaxVolume;
 
-            CompletableFuture<Snapshot> currentFuture = tooLarge
+            CompletableFuture<CaptureResult> captureFuture = tooLarge
                     ? CompletableFuture.completedFuture(null)
-                    : WorldAccess.capture(services, world, selection)
-                    .thenApply(result -> result.snapshot());
-            CompletableFuture<StatusService.DiffReport> diffFuture = currentFuture.thenCompose(current ->
-                    services.async(() -> services.status().diff(world.id(), player.getUUID(), selection,
-                            current, tooLarge)));
+                    : WorldAccess.capture(services, world, selection);
+            CompletableFuture<StatusService.DiffReport> diffFuture = captureFuture.thenCompose(capture -> {
+                Snapshot current = capture == null ? null : capture.snapshot();
+                boolean incomplete = capture != null && capture.partial();
+                return services.async(() -> services.status().diff(world.id(), player.getUUID(), selection,
+                        current, tooLarge, incomplete));
+            });
             CommandSupport.completeFuture(source, diffFuture,
                     report -> showDiff(source, services, selection, report));
             return 1;

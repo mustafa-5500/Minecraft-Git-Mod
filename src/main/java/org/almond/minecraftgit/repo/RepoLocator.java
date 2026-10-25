@@ -7,10 +7,10 @@ import java.nio.file.Path;
 /**
  * Decides where repositories and their local-only metadata live.
  *
- * <p>Resolved open question Q1: repositories live in the plugin data folder
- * ({@code plugins/MinecraftGitPlugin/repos/<world>}), not inside the world
- * folder. World backups therefore never capture a hot {@code .git} directory,
- * and a repository is not accidentally copied with the map.</p>
+ * <p>Repositories live in the mod data folder
+ * ({@code config/minecraftgit/repos/<world>}), not inside the world folder.
+ * World backups therefore never capture a hot {@code .git} directory, and a
+ * repository is not accidentally copied with the map.</p>
  */
 public final class RepoLocator {
 

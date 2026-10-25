@@ -1,6 +1,5 @@
 package org.almond.minecraftgit.staging;
 
-import org.almond.minecraftgit.MinecraftGit;
 import org.almond.minecraftgit.debug.DebugLogger;
 import org.almond.minecraftgit.model.BlockPos;
 import org.almond.minecraftgit.model.Selection;

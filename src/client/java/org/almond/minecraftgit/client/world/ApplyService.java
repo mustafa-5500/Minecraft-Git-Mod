@@ -125,6 +125,10 @@ public final class ApplyService {
                 continue;
             }
             BlockSnapshot block = entry.getValue();
+            if (!BlockStateCodec.isKnown(block.blockData())) {
+                warn(warnings, "Unknown block state '" + block.blockData() + "' at " + position
+                        + " was applied as air.");
+            }
             BlockState state = BlockStateCodec.decode(block.blockData());
             writes.add(new BlockWrite(position, state, block.blockEntity(), false));
         }
@@ -172,8 +176,9 @@ public final class ApplyService {
                 try {
                     var mcPos = new net.minecraft.core.BlockPos(write.position().x(),
                             write.position().y(), write.position().z());
-                    boolean current = level.getBlockState(mcPos).equals(write.state());
-                    boolean changed = current || level.setBlock(mcPos, write.state(), Block.UPDATE_CLIENTS);
+                    boolean alreadyCurrent = level.getBlockState(mcPos).equals(write.state());
+                    boolean changed = alreadyCurrent
+                            || level.setBlock(mcPos, write.state(), Block.UPDATE_CLIENTS);
                     if (!changed) {
                         failed++;
                         warn(warnings, "Could not write " + write.position() + ".");
