@@ -43,6 +43,7 @@ public final class GitCommand {
         RepoCommands.attach(root, services);
         SelectionCommands.attach(root, services);
         StagingCommands.attach(root, services);
+        CommitCommands.attach(root, services);
         dispatcher.register(root);
     }
 
@@ -67,9 +68,10 @@ public final class GitCommand {
             services.messages().raw(source, "  /git selection create|list|select|show|add|remove|reorigin|delete|info");
             services.messages().raw(source, "  /git selection wand|pos1|pos2, /git wand");
             services.messages().raw(source, "  /git add [name], /git rm [name]");
+            services.messages().raw(source, "  /git commit [message], /git commit --empty");
             services.messages().raw(source, "");
             services.messages().raw(source, "Coming in the next phases:");
-            services.messages().raw(source, "  /git commit, status, diff");
+            services.messages().raw(source, "  /git status, diff");
             services.messages().raw(source, "  /git pull, checkout, pull --abort");
             services.messages().raw(source, "");
             services.messages().raw(source, "Data folder: " + services.root());
