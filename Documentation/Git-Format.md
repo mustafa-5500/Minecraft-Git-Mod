@@ -86,7 +86,9 @@ fuller and simpler to round-trip:
 For example, after Base64 decoding, the payload begins with `nbt:{id:"minecraft:chest",...}`.
 The `nbt:` prefix is the marker that distinguishes native NBT from the plugin's JSON. When the mod
 encounters a plugin JSON payload it applies the block state but skips the payload with a warning,
-because guessing at a partial conversion would silently lose data.
+because guessing at a partial conversion would silently lose data. The reverse is also lossy: the
+plugin parses the cell payload as JSON, so an `nbt:` payload fails that block entity while the block
+state still applies.
 
 ## Entity CSV
 
