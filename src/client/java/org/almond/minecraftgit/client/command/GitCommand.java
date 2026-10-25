@@ -45,6 +45,7 @@ public final class GitCommand {
         StagingCommands.attach(root, services);
         CommitCommands.attach(root, services);
         StatusCommands.attach(root, services);
+        PullCommands.attach(root, services);
         dispatcher.register(root);
     }
 
@@ -71,9 +72,10 @@ public final class GitCommand {
             services.messages().raw(source, "  /git add [name], /git rm [name]");
             services.messages().raw(source, "  /git commit [message], /git commit --empty");
             services.messages().raw(source, "  /git status, /git diff [name]");
+            services.messages().raw(source, "  /git pull [name] [--remote r], /git pull --abort [name]");
+            services.messages().raw(source, "  /git checkout <commit> [name]");
             services.messages().raw(source, "");
-            services.messages().raw(source, "Coming in the next phases:");
-            services.messages().raw(source, "  /git pull, checkout, pull --abort");
+            services.messages().raw(source, "Applying builds requires a single-player world.");
             services.messages().raw(source, "");
             services.messages().raw(source, "Data folder: " + services.root());
         });

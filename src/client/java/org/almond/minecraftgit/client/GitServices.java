@@ -2,15 +2,18 @@ package org.almond.minecraftgit.client;
 
 import net.fabricmc.loader.api.FabricLoader;
 import org.almond.minecraftgit.MinecraftGit;
+import org.almond.minecraftgit.backup.BackupService;
 import org.almond.minecraftgit.commit.CommitService;
 import org.almond.minecraftgit.config.ModConfig;
 import org.almond.minecraftgit.client.selection.SelectionManager;
+import org.almond.minecraftgit.client.world.ApplyService;
 import org.almond.minecraftgit.debug.DebugLogger;
 import org.almond.minecraftgit.repo.RepoManager;
 import org.almond.minecraftgit.selection.SelectionService;
 import org.almond.minecraftgit.staging.SnapshotStore;
 import org.almond.minecraftgit.staging.StagingService;
 import org.almond.minecraftgit.status.StatusService;
+import org.almond.minecraftgit.sync.PullService;
 import org.almond.minecraftgit.world.SnapshotService;
 
 import java.nio.file.Path;
@@ -39,6 +42,9 @@ public final class GitServices implements AutoCloseable {
     private final StagingService staging;
     private final CommitService commits;
     private final StatusService status;
+    private final BackupService backups;
+    private final PullService pull;
+    private final ApplyService apply;
     private final ExecutorService io;
 
     public GitServices(Path root, ModConfig config, DebugLogger debug) {
@@ -59,6 +65,9 @@ public final class GitServices implements AutoCloseable {
             return thread;
         };
         this.io = Executors.newFixedThreadPool(2, factory);
+        this.backups = new BackupService(config.backupsRoot(), config.maxBackups);
+        this.pull = new PullService(config.tmpRoot());
+        this.apply = new ApplyService(snapshots, backups, config, debug, io);
     }
 
     public Path root() {
@@ -103,6 +112,18 @@ public final class GitServices implements AutoCloseable {
 
     public StatusService status() {
         return status;
+    }
+
+    public BackupService backups() {
+        return backups;
+    }
+
+    public PullService pull() {
+        return pull;
+    }
+
+    public ApplyService apply() {
+        return apply;
     }
 
     public static String modVersion() {
