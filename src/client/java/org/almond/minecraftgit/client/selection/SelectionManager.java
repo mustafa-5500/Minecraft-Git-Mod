@@ -24,6 +24,11 @@ public final class SelectionManager {
     private final RepoManager repos;
     private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
 
+    /**
+     * Wand {@link SelectionManager} Constructor.
+     * @param selections
+     * @param repos
+     */
     public SelectionManager(SelectionService selections, RepoManager repos) {
         this.selections = selections;
         this.repos = repos;

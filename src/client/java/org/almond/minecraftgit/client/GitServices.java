@@ -47,6 +47,14 @@ public final class GitServices implements AutoCloseable {
     private final ApplyService apply;
     private final ExecutorService io;
 
+    /**
+     * {@link GitServices} Constructor. The top level service controlling all Git micro-services
+     * @param root - Path to Repository Root
+     * @param config - Mod Configurations
+     * @param debug - Debug Logger
+     * 
+     * @return GitServies - Overall Minecraft Git Instance
+     */
     public GitServices(Path root, ModConfig config, DebugLogger debug) {
         this.root = root.toAbsolutePath().normalize();
         this.config = config;
@@ -70,30 +78,59 @@ public final class GitServices implements AutoCloseable {
         this.apply = new ApplyService(snapshots, backups, config, debug, io);
     }
 
+    /**
+     * Repository Root Getter
+     * @return root - Path to Repository Root
+     */
     public Path root() {
         return root;
     }
 
+    /**
+     * The Mod configuration Getter
+     * @return config - Mod Configuration
+     */
     public ModConfig config() {
         return config;
     }
 
+    /** 
+     * The Debug Logger Getter
+     * @return debug - Debug Logger
+     */
     public DebugLogger debug() {
         return debug;
     }
 
+    /**
+     * The {@link ModConfig} Messages Getter
+     * @return messages - Configuration Messages
+     */
     public Messages messages() {
         return messages;
     }
 
+    /**
+     * The {@link RepoManager} for the Single Repository correlated to 
+     * the {@code GitServices} instance.
+     * @return repos - Repository Manager 
+     */
     public RepoManager repos() {
         return repos;
     }
 
+    /**
+     * {@link SelectionService} Getter
+     * @return
+     */
     public SelectionService selections() {
         return selections;
     }
 
+    /**
+     * The Wand {@link SelectionManager} Getter
+     * @return
+     */
     public SelectionManager selectionManager() {
         return selectionManager;
     }

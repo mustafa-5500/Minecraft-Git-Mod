@@ -22,6 +22,11 @@ public final class RepoManager implements AutoCloseable {
     private final Map<String, RepoService> services = new ConcurrentHashMap<>();
     private final Map<String, RepoMetadata> metadataCache = new ConcurrentHashMap<>();
 
+    /**
+     * Manages a Repository per world it is pulled in
+     * @param config
+     * @param debug
+     */
     public RepoManager(ModConfig config, DebugLogger debug) {
         this.config = config;
         this.debug = debug;

@@ -130,3 +130,19 @@ tasks.register('devLog', Exec) {
 
     commandLine(['python', *scriptArgs])
 }
+
+
+// ---------------------------------------------------------------------------
+// Documentation
+// ---------------------------------------------------------------------------
+tasks.register('documentation', Exec) {
+    group = 'documentation'
+    description = "Create or Update the documentation files (Documentation/)"
+    workingDir = projectDir
+
+    def scriptArgs = ["${projectDir}/Utils/documentation-generator/generate_docs.py"]
+    scriptArgs += "${projectDir}/src"
+    scriptArgs += "${projectDir}/Documentation"
+
+    commandLine(['python', *scriptArgs]) 
+}

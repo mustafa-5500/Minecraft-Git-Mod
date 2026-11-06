@@ -47,23 +47,44 @@ public final class SnapshotService {
     private final ModConfig config;
     private final DebugLogger debug;
 
+    /**
+     * {@link SnapshotService} Constructor
+     * @param config
+     * @param debug
+     */
     public SnapshotService(ModConfig config, DebugLogger debug) {
         this.config = config;
         this.debug = debug;
     }
 
+    /**
+     * {@link CaptureResult} of the blocks at a y-level range for a selection.
+     * @param selection
+     * @param level
+     * @return 
+     */
     public CaptureResult capture(Selection selection, Level level) {
         return capture(selection, level, false);
     }
 
+    /**
+     * Captures The Block & Entity data within a world level of a selection, stored in
+     * a {@code {position,data}} map.
+     * @param selection
+     * @param level
+     * @param loadChunks
+     * @return result - {@code List<EntitySnapshots>} In the given selection
+     */
     public CaptureResult capture(Selection selection, Level level, boolean loadChunks) {
-        if (!selection.hasOrigin()) {
+        // No Region Exceptions
+        if (!selection.hasOrigin()) { 
             throw new SelectionException("Selection '" + selection.name()
-                    + "' has no origin yet; add a cuboid first.");
+                    + "' has no origin yet; add a cuboid region first.");
         }
         if (selection.cuboidCount() == 0) {
-            throw new SelectionException("Selection '" + selection.name() + "' has no cuboids.");
+            throw new SelectionException("Selection '" + selection.name() + "' has no cuboid regions.");
         }
+        // Size Exceeded Exception
         long volume = selection.volume();
         if (volume > config.maxBlocksPerCommit) {
             throw new SelectionException("Selection volume " + volume
@@ -79,23 +100,31 @@ public final class SnapshotService {
         long blockEntityBytes = 0;
         int maxEntityBytes = config.maxBlockEntityBytes;
 
+        // O(n*x*y*z)
         for (Cuboid cuboid : selection.cuboids()) {
             for (int y = cuboid.minY(); y <= cuboid.maxY(); y++) {
                 for (int x = cuboid.minX(); x <= cuboid.maxX(); x++) {
                     for (int z = cuboid.minZ(); z <= cuboid.maxZ(); z++) {
+
+                        // Only check for blocks within the y-level range
                         if (y < level.getMinBuildHeight() || y >= level.getMaxBuildHeight()) {
                             skippedBlocks++;
                             continue;
                         }
+
+                        // Only check Loaded Chunks, and/or load unloaded chunks if the given boolean is true.
                         if (!ensureLoaded(level, x, z, loadChunks, loadedChunks)) {
                             unloadedChunks.add(chunkKey(x >> 4, z >> 4));
                             skippedBlocks++;
                             continue;
                         }
+
+                        // If Block position is already captured, continue
                         BlockPos absolute = new BlockPos(x, y, z);
                         if (blocks.containsKey(absolute)) {
                             continue;
                         }
+
                         var mcPos = new net.minecraft.core.BlockPos(x, y, z);
                         String blockData = BlockStateCodec.encode(level.getBlockState(mcPos));
                         debug.blockRead(selection.world(), x, y, z, blockData);
@@ -107,9 +136,10 @@ public final class SnapshotService {
                                 String payload = BlockEntityCodec.encode(entity, level.registryAccess());
                                 if (payload != null) {
                                     int bytes = BlockEntityCodec.payloadBytes(payload);
+                                    // If Entity Data overflows the byte limit, do not store it
                                     if (bytes > maxEntityBytes) {
                                         warn(warnings, "Block-entity data at " + absolute + " is " + bytes
-                                                + " bytes (limit " + maxEntityBytes + "); stored without it.");
+                                                + " bytes (limit " + maxEntityBytes + "); stored without Entity Data.");
                                     } else {
                                         blockEntity = payload;
                                         blockEntityBytes += bytes;
@@ -120,15 +150,19 @@ public final class SnapshotService {
                                         + e.getMessage());
                             }
                         }
+                        // Update blocks map with the block and entity data at the position
                         blocks.put(absolute, BlockSnapshot.at(absolute, origin, blockData, blockEntity));
                     }
                 }
             }
         }
 
+        // Capture a List of Entity Snap shots
         List<EntitySnapshot> entities = captureEntities(level, selection, origin, warnings);
         int capturedEntities = entities.size();
         int skippedEntities = 0;
+
+        // Skip Entities after the capture cap.
         if (capturedEntities > config.maxEntitiesPerSelection) {
             entities = new ArrayList<>(entities.subList(0, config.maxEntitiesPerSelection));
             skippedEntities = capturedEntities - config.maxEntitiesPerSelection;
@@ -182,30 +216,52 @@ public final class SnapshotService {
         return new Snapshot(selectionName, origin, new ArrayList<>(blocks.values()), List.of(), Instant.now());
     }
 
+    /**
+     * 
+     * @param level
+     * @param selection
+     * @param origin
+     * @param warnings
+     * @return
+     */
     private List<EntitySnapshot> captureEntities(Level level, Selection selection, BlockPos origin,
                                                  List<String> warnings) {
         List<EntitySnapshot> result = new ArrayList<>();
         Set<UUID> seen = new HashSet<>();
         int maxBytes = config.maxBlockEntityBytes;
+
+        //O(n*m)
         for (Cuboid cuboid : selection.cuboids()) {
+            
+            // Convert Cuboid Block selections to Continuous Axis Aligned Bounding Boxes.
             AABB box = new AABB(cuboid.minX(), cuboid.minY(), cuboid.minZ(),
                     cuboid.maxX() + 1.0, cuboid.maxY() + 1.0, cuboid.maxZ() + 1.0);
+            
+            // Check All non-player entities
             for (Entity entity : level.getEntitiesOfClass(Entity.class, box,
                     candidate -> !(candidate instanceof Player))) {
+                
+                // Continue if entity is already seen or is flagged for removal
                 if (entity.isRemoved() || !seen.add(entity.getUUID())) {
                     continue;
                 }
+                
+                // The entity is not within the cuboid box
                 if (!entity.getBoundingBox().intersects(box)) {
                     continue;
                 }
+
                 try {
                     String payload = EntityCodec.encode(entity);
                     int bytes = EntityCodec.payloadBytes(payload);
+
+                    // Byte Limite Exception
                     if (bytes > maxBytes) {
                         warn(warnings, "Entity " + EntityType.getKey(entity.getType()) + " at "
                                 + entity.blockPosition() + " exceeded the entity payload limit and was skipped.");
                         continue;
                     }
+
                     double rx = entity.getX() - origin.x();
                     double ry = entity.getY() - origin.y();
                     double rz = entity.getZ() - origin.z();
@@ -224,7 +280,17 @@ public final class SnapshotService {
         return result;
     }
 
+    /**
+     * Checks and/or loads chunks at a given block position.
+     * @param level
+     * @param x
+     * @param z
+     * @param loadChunks
+     * @param loadedChunks
+     * @return
+     */
     private static boolean ensureLoaded(Level level, int x, int z, boolean loadChunks, Set<Long> loadedChunks) {
+        // Loads Chunk through the getChunk(), whether it was currently loaded or not.
         if (loadChunks && level instanceof ServerLevel serverLevel) {
             long key = chunkKey(x >> 4, z >> 4);
             if (loadedChunks.add(key)) {

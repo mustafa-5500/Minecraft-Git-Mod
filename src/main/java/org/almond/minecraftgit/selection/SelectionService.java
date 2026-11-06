@@ -27,6 +27,10 @@ public final class SelectionService {
     private final SelectionMetadataStore store;
     private final Map<String, List<Selection>> cache = new ConcurrentHashMap<>();
 
+    /**
+     * Constructor for the {@link SelectionService} 
+     * @param config
+     */
     public SelectionService(ModConfig config) {
         this.config = config;
         this.store = new SelectionMetadataStore(config.selectionsRoot());
@@ -138,6 +142,12 @@ public final class SelectionService {
         return store;
     }
 
+    /**
+     * Load selection of the Repository into cache per-world
+     * @param worldId
+     * @param owner
+     * @return
+     */
     private List<Selection> load(String worldId, UUID owner) {
         return cache.computeIfAbsent(key(worldId, owner), ignored -> store.load(worldId, owner));
     }

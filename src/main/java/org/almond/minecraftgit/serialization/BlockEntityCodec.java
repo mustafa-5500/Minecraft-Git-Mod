@@ -11,7 +11,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  * the CSV cell. Unlike the Paper plugin's typed JSON subset this can carry the
  * full data the client knows about, including inventories and component data.
  *
- * <p>Payloads written by the plugin start with {@code {} and are deliberately
+ * <p>Payloads written by the plugin start with {@code {}} and are deliberately
  * not parsed here; the block itself still applies and the caller can warn about
  * the unsupported payload.</p>
  */

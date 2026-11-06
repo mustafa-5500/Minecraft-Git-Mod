@@ -17,6 +17,12 @@ public final class RepoLocator {
     private final Path repoRoot;
     private final Path metadataRoot;
 
+    /**
+     * Service to set the local repository path location and meta-data 
+     * for each world a repository exists within.
+     * @param repoRoot
+     * @param metadataRoot
+     */
     public RepoLocator(Path repoRoot, Path metadataRoot) {
         this.repoRoot = repoRoot.toAbsolutePath().normalize();
         this.metadataRoot = metadataRoot.toAbsolutePath().normalize();

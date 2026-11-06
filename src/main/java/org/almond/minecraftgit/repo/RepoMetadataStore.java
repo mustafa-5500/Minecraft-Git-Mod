@@ -21,6 +21,11 @@ public final class RepoMetadataStore {
     private final DebugLogger debug;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
+    /**
+     * Read & write channel to update Repository Meta-Data
+     * @param metadataRoot
+     * @param debug
+     */
     public RepoMetadataStore(Path metadataRoot, DebugLogger debug) {
         this.metadataRoot = metadataRoot;
         this.debug = debug;

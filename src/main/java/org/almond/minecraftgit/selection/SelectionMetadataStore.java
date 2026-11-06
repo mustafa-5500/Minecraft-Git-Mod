@@ -32,6 +32,10 @@ public final class SelectionMetadataStore {
     private final Path root;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
+    /**
+     * Constructor for the per-repository meta-data Read & Write Service
+     * @param root
+     */
     public SelectionMetadataStore(Path root) {
         this.root = root.toAbsolutePath().normalize();
     }

@@ -98,6 +98,10 @@ public final class Selection {
         this.world = world;
     }
 
+    /**
+     * {@link Selection} Origin Getter
+     * @return
+     */
     public BlockPos origin() {
         return origin;
     }
@@ -107,6 +111,10 @@ public final class Selection {
         touch();
     }
 
+    /**
+     * Origin Checker for a selection
+     * @return
+     */
     public boolean hasOrigin() {
         return origin != null;
     }

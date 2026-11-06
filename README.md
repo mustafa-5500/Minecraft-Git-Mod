@@ -79,47 +79,46 @@ launches are faster. `runServer` is not useful for this mod because it is client
 7. `/git commit` writes the commit. `/git log` shows it.
 8. Edit the build. `/git status` and `/git diff castle` show what changed.
 9. `/git remote add origin <path-or-url>` and `/git push` to share it.
-10. In another single-player world, `/git pull` (after adding the same remote) applies the build and
-    fast-forwards the local branch. `/git pull --abort` restores the pre-apply backup.
+10. In another single-player world, `/git pull` (after adding the same remote) applies the build and fast-forwards the local branch. `/git pull --abort` restores the pre-apply backup.
 
 ## Commands
 
-| Command | Purpose |
-|---|---|
-| `/git help` | Command overview |
-| `/git version` | Mod/Minecraft versions |
-| `/git init` | Create this world/dimension's repository |
-| `/git repo` | Repository path, branch, HEAD, author, remote |
-| `/git config show` | Effective settings |
-| `/git config author <name> <email>` | Commit identity |
-| `/git config debug` | Toggle the debug log |
-| `/git config blocks` | Toggle per-block debug logging |
-| `/git remote add <name> <url>` | Add a local path or HTTP remote |
-| `/git remote remove <name>` | Remove a remote |
-| `/git remote list` | List remotes |
-| `/git log [count]` | Recent commits |
-| `/git push [--force]` | Push the current branch |
-| `/git fetch [remote]` | Fetch without applying |
-| `/git selection create <name>` | Create and activate a selection |
-| `/git selection list` | List selections and the active one |
-| `/git selection select <name>` | Change the active selection |
-| `/git selection show [name]` | Particle-highlight a selection for 8 seconds |
-| `/git selection add [name]` | Add the pending wand cuboid |
-| `/git selection remove <index> [name]` | Remove a sorted cuboid |
-| `/git selection reorigin [name]` | Move the origin to the smallest corner |
-| `/git selection delete <name>` | Delete a selection and its staging |
-| `/git selection info [name]` | Origins, bounds, cuboids, tracking |
-| `/git selection wand` / `/git wand` | Give the wand (single-player) |
-| `/git selection pos1` / `pos2` | Set a corner from the block you are looking at |
-| `/git add [name]` | Capture and stage a selection |
-| `/git rm [name]` | Untrack and discard staging |
-| `/git commit [message]` | Commit all staged selections |
-| `/git commit --empty [message]` | Create an explicit empty checkpoint |
-| `/git status` | Compare HEAD, staging, and the world |
-| `/git diff [name]` | Coordinate-level diff summary and samples |
-| `/git pull [name] [--remote r]` | Fetch, apply, then fast-forward |
-| `/git pull --abort [name]` | Restore the latest pre-apply backup |
-| `/git checkout <commit> [name]` | Apply an old commit without moving the branch |
+| Command                                | Purpose                                        |
+| -------------------------------------- | ---------------------------------------------- |
+| `/git help`                            | Command overview                               |
+| `/git version`                         | Mod/Minecraft versions                         |
+| `/git init`                            | Create this world/dimension's repository       |
+| `/git repo`                            | Repository path, branch, HEAD, author, remote  |
+| `/git config show`                     | Effective settings                             |
+| `/git config author <name> <email>`    | Commit identity                                |
+| `/git config debug`                    | Toggle the debug log                           |
+| `/git config blocks`                   | Toggle per-block debug logging                 |
+| `/git remote add <name> <url>`         | Add a local path or HTTP remote                |
+| `/git remote remove <name>`            | Remove a remote                                |
+| `/git remote list`                     | List remotes                                   |
+| `/git log [count]`                     | Recent commits                                 |
+| `/git push [--force]`                  | Push the current branch                        |
+| `/git fetch [remote]`                  | Fetch without applying                         |
+| `/git selection create <name>`         | Create and activate a selection                |
+| `/git selection list`                  | List selections and the active one             |
+| `/git selection select <name>`         | Change the active selection                    |
+| `/git selection show [name]`           | Particle-highlight a selection for 8 seconds   |
+| `/git selection add [name]`            | Add the pending wand cuboid                    |
+| `/git selection remove <index> [name]` | Remove a sorted cuboid                         |
+| `/git selection reorigin [name]`       | Move the origin to the smallest corner         |
+| `/git selection delete <name>`         | Delete a selection and its staging             |
+| `/git selection info [name]`           | Origins, bounds, cuboids, tracking             |
+| `/git selection wand` / `/git wand`    | Give the wand (single-player)                  |
+| `/git selection pos1` / `pos2`         | Set a corner from the block you are looking at |
+| `/git add [name]`                      | Capture and stage a selection                  |
+| `/git rm [name]`                       | Untrack and discard staging                    |
+| `/git commit [message]`                | Commit all staged selections                   |
+| `/git commit --empty [message]`        | Create an explicit empty checkpoint            |
+| `/git status`                          | Compare HEAD, staging, and the world           |
+| `/git diff [name]`                     | Coordinate-level diff summary and samples      |
+| `/git pull [name] [--remote r]`        | Fetch, apply, then fast-forward                |
+| `/git pull --abort [name]`             | Restore the latest pre-apply backup            |
+| `/git checkout <commit> [name]`        | Apply an old commit without moving the branch  |
 
 Selection names are 1–32 characters of letters, digits, `_` or `-`, starting with a letter or digit.
 
@@ -142,8 +141,7 @@ config/minecraftgit/
 A world key includes the dimension (`world__overworld`, `world__the_nether`, …), so dimensions
 never share coordinates or selections. In multiplayer the key also includes the server address, so
 two servers with the same display name do not share local state. Repositories live outside the save
-folder, mirroring the plugin's data-folder decision; copy `config/minecraftgit/repos/` when moving a
-repository to another machine.
+folder, mirroring the plugin's data-folder decision; copy `config/minecraftgit/repos/` when moving a repository to another machine.
 
 ## Repository format
 
