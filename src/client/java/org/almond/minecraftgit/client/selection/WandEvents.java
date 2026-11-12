@@ -5,7 +5,9 @@ import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -13,8 +15,6 @@ import org.almond.minecraftgit.client.GitServices;
 import org.almond.minecraftgit.client.WorldContext;
 import org.almond.minecraftgit.model.BlockPos;
 import org.almond.minecraftgit.model.Cuboid;
-import org.almond.minecraftgit.model.Selection;
-import org.almond.minecraftgit.selection.SelectionException;
 
 import java.util.Optional;
 
@@ -81,17 +81,31 @@ public final class WandEvents {
                     .withStyle(ChatFormatting.YELLOW));
             return;
         }
-        try {
-            Selection selection = services.selections().addCuboid(world.id(), player.getUUID(), active, cuboid);
-            manager.setActive(world, player, selection.name());
-            player.sendSystemMessage(Component.literal("Added " + cuboid.dimensions() + " to '"
-                    + selection.name() + "' (" + selection.cuboidCount() + " cuboid(s), origin "
-                    + selection.origin() + ").").withStyle(ChatFormatting.GREEN));
-        } catch (SelectionException e) {
-            manager.setPending(player, cuboid);
-            player.sendSystemMessage(Component.literal(e.getMessage() + " Cuboid kept pending.")
-                    .withStyle(ChatFormatting.RED));
-        }
+        manager.setPending(player, cuboid, active);
+        sendConfirmationPrompt(player, cuboid, active);
+    }
+
+    private static void sendConfirmationPrompt(Player player, Cuboid cuboid, String selectionName) {
+        Component confirm = button("[Confirm]", ChatFormatting.GREEN, "/git selection confirm",
+                "Add this cuboid to '" + selectionName + "'");
+        Component cancel = button("[Cancel]", ChatFormatting.RED, "/git selection cancel",
+                "Discard this cuboid");
+        long volume = cuboid.volume();
+        player.sendSystemMessage(Component.literal("Cuboid " + cuboid + " (" + cuboid.dimensions()
+                        + ", " + volume + (volume == 1 ? " block" : " blocks") + ") ready. Add to '"
+                        + selectionName + "'? ")
+                .withStyle(ChatFormatting.YELLOW)
+                .append(confirm)
+                .append(Component.literal(" ").withStyle(ChatFormatting.YELLOW))
+                .append(cancel));
+    }
+
+    private static Component button(String label, ChatFormatting color, String command, String hover) {
+        return Component.literal(label).withStyle(style -> style
+                .withColor(color)
+                .withBold(true)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(hover))));
     }
 
     static void actionBar(Player player, String message) {

@@ -13,10 +13,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Per-player wand session state: the two pending corners, the last completed
- * cuboid, and the active selection name. The durable selection list lives in
- * {@link SelectionService}; the remembered active name is stored in local repo
- * metadata so it survives a restart.
+ * Per-player wand session state: the two pending corners, the completed cuboid
+ * waiting for confirmation, and the active selection name. The durable
+ * selection list lives in {@link SelectionService}; the remembered active name
+ * is stored in local repo metadata so it survives a restart.
  */
 public final class SelectionManager {
 
@@ -62,29 +62,45 @@ public final class SelectionManager {
         return Optional.empty();
     }
 
-    public Cuboid takePending(Player player) {
+    public PendingCuboid takePending(Player player) {
         Session session = session(player);
-        Cuboid pending = session.pending;
+        PendingCuboid pending = session.pending;
         session.pending = null;
         return pending;
     }
 
     public void setPending(Player player, Cuboid cuboid) {
-        session(player).pending = cuboid;
+        setPending(player, new PendingCuboid(cuboid, null));
+    }
+
+    public void setPending(Player player, Cuboid cuboid, String selectionName) {
+        setPending(player, new PendingCuboid(cuboid, selectionName));
+    }
+
+    public void setPending(Player player, PendingCuboid pending) {
+        session(player).pending = pending;
     }
 
     public Cuboid peekPending(Player player) {
-        return session(player).pending;
+        PendingCuboid pending = session(player).pending;
+        return pending == null ? null : pending.cuboid();
     }
 
     public void clear(Player player) {
         sessions.remove(player.getUUID());
     }
 
+    /**
+     * A completed cuboid that has not been applied yet. The selection name is the
+     * selection it was built for, or {@code null} when no selection was active.
+     */
+    public record PendingCuboid(Cuboid cuboid, String selectionName) {
+    }
+
     public static final class Session {
         private BlockPos cornerA;
         private BlockPos cornerB;
-        private Cuboid pending;
+        private PendingCuboid pending;
 
         public BlockPos cornerA() {
             return cornerA;
@@ -94,7 +110,7 @@ public final class SelectionManager {
             return cornerB;
         }
 
-        public Cuboid pendingCuboid() {
+        public PendingCuboid pendingCuboid() {
             return pending;
         }
     }

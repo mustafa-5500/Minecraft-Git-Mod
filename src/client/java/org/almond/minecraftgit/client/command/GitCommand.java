@@ -67,7 +67,8 @@ public final class GitCommand {
             services.messages().raw(source, "  /git remote add|remove|list");
             services.messages().raw(source, "  /git log [count]");
             services.messages().raw(source, "  /git push [--force], /git fetch [remote]");
-            services.messages().raw(source, "  /git selection create|list|select|show|add|remove|reorigin|delete|info");
+            services.messages().raw(source, "  /git selection create|list|select|show|add|remove");
+            services.messages().raw(source, "  /git selection reorigin|delete|confirm|cancel|info");
             services.messages().raw(source, "  /git selection wand|pos1|pos2, /git wand");
             services.messages().raw(source, "  /git add [name], /git rm [name]");
             services.messages().raw(source, "  /git commit [message], /git commit --empty");
