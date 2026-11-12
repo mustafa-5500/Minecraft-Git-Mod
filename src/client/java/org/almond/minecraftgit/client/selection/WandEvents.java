@@ -64,8 +64,10 @@ public final class WandEvents {
         }
         SelectionManager manager = services.selectionManager();
         Optional<Cuboid> completed = manager.setCorner(player, first, pos);
+        // Show the clicked corner for both clicks, including the second one that
+        // completes the cuboid; the completion message below goes to chat.
+        actionBar(player, (first ? "Corner A" : "Corner B") + " set at " + pos.x() + ", " + pos.y() + ", " + pos.z());
         if (completed.isEmpty()) {
-            actionBar(player, (first ? "Corner A" : "Corner B") + " set at " + pos.x() + ", " + pos.y() + ", " + pos.z());
             return;
         }
         completeCuboid(services, world, player, completed.get());
@@ -76,8 +78,8 @@ public final class WandEvents {
         String active = manager.active(world, player);
         if (active == null) {
             manager.setPending(player, cuboid);
-            player.sendSystemMessage(Component.literal("Cuboid ready (" + cuboid.dimensions()
-                    + "). Create or select a selection, then run /git selection add.")
+            player.sendSystemMessage(Component.literal("Cuboid ready: " + cuboid.dimensions() + ", "
+                    + bounds(cuboid) + ". Create or select a selection, then run /git selection add.")
                     .withStyle(ChatFormatting.YELLOW));
             return;
         }
@@ -86,12 +88,18 @@ public final class WandEvents {
             manager.setActive(world, player, selection.name());
             player.sendSystemMessage(Component.literal("Added " + cuboid.dimensions() + " to '"
                     + selection.name() + "' (" + selection.cuboidCount() + " cuboid(s), origin "
-                    + selection.origin() + ").").withStyle(ChatFormatting.GREEN));
+                    + selection.origin() + "). Cuboid " + bounds(cuboid) + ".")
+                    .withStyle(ChatFormatting.GREEN));
         } catch (SelectionException e) {
             manager.setPending(player, cuboid);
             player.sendSystemMessage(Component.literal(e.getMessage() + " Cuboid kept pending.")
                     .withStyle(ChatFormatting.RED));
         }
+    }
+
+    /** The cuboid's inclusive bounds, labelled so they cannot be mistaken for the selection origin. */
+    private static String bounds(Cuboid cuboid) {
+        return "min (" + cuboid.smallestCorner() + "), max (" + cuboid.largestCorner() + ")";
     }
 
     static void actionBar(Player player, String message) {
