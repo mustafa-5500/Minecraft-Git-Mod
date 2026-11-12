@@ -56,6 +56,10 @@ public final class SelectionCommands {
                                 .suggests(names(services))
                                 .executes(context -> add(context.getSource(), services,
                                         StringArgumentType.getString(context, "name")))))
+                .then(ClientCommandManager.literal("confirm")
+                        .executes(context -> confirm(context.getSource(), services)))
+                .then(ClientCommandManager.literal("cancel")
+                        .executes(context -> cancel(context.getSource(), services)))
                 .then(ClientCommandManager.literal("remove")
                         .then(ClientCommandManager.argument("index", IntegerArgumentType.integer(1))
                                 .executes(context -> remove(context.getSource(), services,
@@ -98,10 +102,11 @@ public final class SelectionCommands {
             services.messages().raw(source, "Selection commands:");
             services.messages().raw(source, "  /git selection create <name>");
             services.messages().raw(source, "  /git selection list | select <name> | info [name]");
-            services.messages().raw(source, "  /git selection add [name] | remove <index> [name]");
-            services.messages().raw(source, "  /git selection reorigin [name] | delete <name>");
-            services.messages().raw(source, "  /git selection show [name] | wand | pos1 | pos2");
-            services.messages().raw(source, "Wand: left-click = corner A, right-click = corner B.");
+            services.messages().raw(source, "  /git selection add [name] | confirm | cancel");
+            services.messages().raw(source, "  /git selection remove <index> [name] | reorigin [name]");
+            services.messages().raw(source, "  /git selection delete <name> | show [name] | wand | pos1 | pos2");
+            services.messages().raw(source, "Wand: left-click = corner A, right-click = corner B. "
+                    + "A completed box waits for confirm or cancel.");
         });
     }
 
@@ -110,14 +115,14 @@ public final class SelectionCommands {
             Player player = requirePlayer(source);
             WorldContext world = world(source);
             SelectionManager manager = services.selectionManager();
-            Cuboid pending = manager.takePending(player);
+            SelectionManager.PendingCuboid pending = manager.takePending(player);
             Selection selection = null;
             try {
                 selection = services.selections().create(world.id(), player.getUUID(),
                         player.getName().getString(), name);
                 if (pending != null) {
                     try {
-                        services.selections().addCuboid(world.id(), player.getUUID(), name, pending);
+                        services.selections().addCuboid(world.id(), player.getUUID(), name, pending.cuboid());
                     } catch (SelectionException e) {
                         services.selections().delete(world.id(), player.getUUID(), name);
                         selection = null;
@@ -193,21 +198,69 @@ public final class SelectionCommands {
         return CommandSupport.runInt(source, () -> {
             Player player = requirePlayer(source);
             WorldContext world = world(source);
-            Cuboid pending = services.selectionManager().takePending(player);
+            SelectionManager manager = services.selectionManager();
+            SelectionManager.PendingCuboid pending = manager.takePending(player);
             if (pending == null) {
                 services.messages().send(source, "No pending cuboid. Click two corners with /git wand first.");
                 return 1;
             }
             Selection selection = resolve(services, world, player, name);
             try {
-                services.selections().addCuboid(world.id(), player.getUUID(), selection.name(), pending);
+                services.selections().addCuboid(world.id(), player.getUUID(), selection.name(), pending.cuboid());
             } catch (SelectionException e) {
-                services.selectionManager().setPending(player, pending);
+                manager.setPending(player, pending);
                 throw e;
             }
-            services.selectionManager().setActive(world, player, selection.name());
-            services.messages().success(source, "Added " + pending.dimensions() + " to '"
+            manager.setActive(world, player, selection.name());
+            services.messages().success(source, "Added " + pending.cuboid().dimensions() + " to '"
                     + selection.name() + "' (" + selection.cuboidCount() + " cuboid(s)).");
+            return 1;
+        });
+    }
+
+    private static int confirm(FabricClientCommandSource source, GitServices services) {
+        return CommandSupport.runInt(source, () -> {
+            Player player = requirePlayer(source);
+            WorldContext world = world(source);
+            SelectionManager manager = services.selectionManager();
+            SelectionManager.PendingCuboid pending = manager.takePending(player);
+            if (pending == null) {
+                services.messages().send(source, "No pending cuboid to confirm. "
+                        + "Click two corners with /git wand first.");
+                return 1;
+            }
+            String target = pending.selectionName() != null && !pending.selectionName().isBlank()
+                    ? pending.selectionName()
+                    : manager.active(world, player);
+            if (target == null || target.isBlank()) {
+                manager.setPending(player, pending);
+                services.messages().warn(source, "No active selection. Create one with "
+                        + "/git selection create <name> or add the cuboid with /git selection add <name>.");
+                return 1;
+            }
+            try {
+                Selection selection = services.selections().addCuboid(world.id(), player.getUUID(),
+                        target, pending.cuboid());
+                manager.setActive(world, player, selection.name());
+                services.messages().success(source, "Added " + pending.cuboid() + " to '"
+                        + selection.name() + "' (" + selection.cuboidCount() + " cuboid(s)).");
+            } catch (SelectionException e) {
+                manager.setPending(player, pending);
+                throw e;
+            }
+            return 1;
+        });
+    }
+
+    private static int cancel(FabricClientCommandSource source, GitServices services) {
+        return CommandSupport.runInt(source, () -> {
+            Player player = requirePlayer(source);
+            SelectionManager.PendingCuboid pending = services.selectionManager().takePending(player);
+            if (pending == null) {
+                services.messages().send(source, "No pending cuboid to cancel.");
+                return 1;
+            }
+            services.messages().success(source, "Discarded pending cuboid " + pending.cuboid() + ".");
             return 1;
         });
     }

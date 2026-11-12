@@ -72,7 +72,9 @@ These require an actual client/window and are not automated yet.
       works in multiplayer.
 - [ ] Left/right clicking corners with the wand does **not** break or place blocks.
 - [ ] The first box is held as pending; `/git selection create castle` consumes it.
-- [ ] Adding a second box grows the selection; `/git selection list` shows 2 cuboids.
+- [ ] Adding a second box shows a confirmation prompt; `/git selection confirm` adds it.
+- [ ] `/git selection cancel` discards a pending box without changing the selection.
+- [ ] After confirming, `/git selection list` shows 2 cuboids.
 - [ ] `/git selection show castle` draws particles for 8 seconds.
 - [ ] Restart the game; the selection, origin, and active selection are still present.
 - [ ] `/git selection remove 1` trims the staged snapshot if one exists.

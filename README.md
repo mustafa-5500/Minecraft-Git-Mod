@@ -74,7 +74,8 @@ launches are faster. `runServer` is not useful for this mod because it is client
 4. Left-click one corner and right-click the opposite corner. The first completed box is held as a
    pending cuboid until you create or select a selection.
 5. `/git selection create castle` creates the selection and consumes the pending cuboid.
-   Add more boxes by clicking two corners while `castle` is the active selection.
+   Add more boxes by clicking two corners while `castle` is the active selection, then click
+   `[Confirm]` or run `/git selection confirm`. `/git selection cancel` discards the box.
 6. `/git add castle` captures and stages the build.
 7. `/git commit` writes the commit. `/git log` shows it.
 8. Edit the build. `/git status` and `/git diff castle` show what changed.
@@ -105,6 +106,8 @@ launches are faster. `runServer` is not useful for this mod because it is client
 | `/git selection select <name>` | Change the active selection |
 | `/git selection show [name]` | Particle-highlight a selection for 8 seconds |
 | `/git selection add [name]` | Add the pending wand cuboid |
+| `/git selection confirm` | Confirm and add the pending wand cuboid |
+| `/git selection cancel` | Discard the pending wand cuboid |
 | `/git selection remove <index> [name]` | Remove a sorted cuboid |
 | `/git selection reorigin [name]` | Move the origin to the smallest corner |
 | `/git selection delete <name>` | Delete a selection and its staging |
