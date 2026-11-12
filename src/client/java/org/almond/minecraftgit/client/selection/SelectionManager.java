@@ -77,6 +77,16 @@ public final class SelectionManager {
         return session(player).pending;
     }
 
+    /**
+     * The corner already clicked for the box currently being made, or
+     * {@code null} when no corner is waiting for its pair. Either corner can be
+     * clicked first, so this returns whichever of A/B is set.
+     */
+    public BlockPos inProgressCorner(Player player) {
+        Session state = session(player);
+        return state.cornerA != null ? state.cornerA : state.cornerB;
+    }
+
     public void clear(Player player) {
         sessions.remove(player.getUUID());
     }
