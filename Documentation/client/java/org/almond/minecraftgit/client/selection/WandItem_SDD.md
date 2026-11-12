@@ -18,7 +18,7 @@
 
 ## Usage
 
-TODO: Describe how `WandItem` is instantiated and used.
+Used statically by `/git wand` (`WandItem.give`), by `WandEvents` (`WandItem.isWand`), and by the multiplayer message that points players at the sneak fallback. There is no instance and no registry entry: the wand is a vanilla item plus custom data, which is why it works in single-player and degrades gracefully in multiplayer.
 
 ---
 
@@ -56,20 +56,20 @@ import org.almond.minecraftgit.config.ModConfig;
 
 | Import | Purpose |
 |--------|---------|
-| `ChatFormatting` | TODO: describe purpose |
-| `Minecraft` | TODO: describe purpose |
-| `BuiltInRegistries` | TODO: describe purpose |
-| `CompoundTag` | TODO: describe purpose |
-| `Component` | TODO: describe purpose |
-| `ResourceLocation` | TODO: describe purpose |
-| `MinecraftServer` | TODO: describe purpose |
-| `ServerPlayer` | TODO: describe purpose |
-| `Player` | TODO: describe purpose |
-| `Item` | TODO: describe purpose |
-| `ItemStack` | TODO: describe purpose |
-| `Items` | TODO: describe purpose |
-| `CustomData` | TODO: describe purpose |
-| [`ModConfig`](../../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | TODO: describe purpose |
+| `ChatFormatting` | Styles the `Git Wand` custom name aqua. |
+| `Minecraft` | Provides `getSingleplayerServer()` for the give path. |
+| `BuiltInRegistries` | Resolves the configured `wandItem` resource location to an `Item`. |
+| `CompoundTag` | Holds the `TAG` boolean written into `CUSTOM_DATA`. |
+| `Component` | The literal custom name component. |
+| `ResourceLocation` | Parses the configured item id. |
+| `MinecraftServer` | The integrated server used to reach the authoritative inventory. |
+| `ServerPlayer` | Server-side player whose inventory receives the stack. |
+| `Player` | Client player passed in by commands and click handlers. |
+| `Item` | Return type of `configuredItem`. |
+| `ItemStack` | The wand stack created and tested. |
+| `Items` | Supplies the `AIR` and `WOODEN_SHOVEL` fallbacks. |
+| `CustomData` | Component wrapper for the custom-data tag. |
+| [`ModConfig`](../../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | Supplies the `wandItem` id used to choose the base item. |
 
 ---
 
@@ -90,7 +90,7 @@ public static final String TAG;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `TAG` | `String` | TODO: describe |
+| `TAG` | `String` | Public constant holding the custom-data key `minecraftgit_wand`; both `create` and `isWand` use it, so other code stamping a stack can reuse it. |
 
 ---
 
@@ -100,7 +100,7 @@ public static final String TAG;
 private WandItem()
 ```
 
-TODO: Provide detailed design explanation for `WandItem`.
+Private and empty: everything is static because the wand is identified by stack data rather than by a class instance or registry entry.
 
 ---
 
@@ -110,7 +110,7 @@ TODO: Provide detailed design explanation for `WandItem`.
 public static Item configuredItem(ModConfig config)
 ```
 
-TODO: Provide detailed design explanation for `configuredItem`.
+Parses `config.wandItem` with `ResourceLocation.tryParse`, returns `Items.WOODEN_SHOVEL` for a null id, looks the item up in `BuiltInRegistries.ITEM` and falls back again for a null or `Items.AIR` result. The registry lookup lets a modded item id work as the wand base, and a typo degrades to the shovel instead of failing.
 
 ---
 
@@ -120,7 +120,7 @@ TODO: Provide detailed design explanation for `configuredItem`.
 public static ItemStack create(ModConfig config)
 ```
 
-TODO: Provide detailed design explanation for `create`.
+Creates the stack, sets `CUSTOM_NAME` to `Git Wand` styled aqua, builds a `CompoundTag` with the `TAG` boolean set to true and wraps it in `CUSTOM_DATA`. Nothing is registered or persisted: identity lives entirely in item components, which is why copied or command-created stacks still count as wands.
 
 ---
 
@@ -130,7 +130,7 @@ TODO: Provide detailed design explanation for `create`.
 public static boolean isWand(ItemStack stack, ModConfig config, Player player)
 ```
 
-TODO: Provide detailed design explanation for `isWand`.
+First checks the `CUSTOM_DATA` component for the `TAG` boolean, so a renamed or re-itemised wand still works. The fallback compares the stack item to `configuredItem(config)` and requires `player.isShiftKeyDown()`, giving multiplayer players a way to set corners without a server-side item; null or empty stacks short-circuit to false.
 
 ---
 

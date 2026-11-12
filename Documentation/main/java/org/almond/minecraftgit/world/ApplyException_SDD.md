@@ -14,7 +14,14 @@
 
 ## Usage
 
-TODO: Describe how `ApplyException` is instantiated and used.
+`ApplyException` is created only inside `client.world.ApplyService`: once eagerly in `apply` for a missing single-player server or level, and four times as `completeExceptionally` calls in `begin` and `Job.process` for a stopping server, a failed backup capture, a failed backup write, or a server that stopped mid-apply. It is never caught inside the apply job; command handlers unwrap the future with `CommandSupport.unwrap` and display the message through `Messages`.
+
+```java
+future.completeExceptionally(new ApplyException(
+        "Could not write a pre-apply backup: " + cause.getMessage(), cause));
+```
+
+The type carries no flags or retry policy: its message is the entire user-facing contract, and the cause is preserved only for diagnostics.
 
 ---
 
@@ -36,7 +43,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 
 | Import | Purpose |
 |--------|---------|
-| [`UserFacingException`](../util/UserFacingException.md) | TODO: describe purpose |
+| [`UserFacingException`](../util/UserFacingException.md) | Supplies the unchecked, chat-safe superclass so command handlers can treat apply failures like other expected errors. |
 
 ---
 
@@ -46,7 +53,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 public final class ApplyException extends UserFacingException {
 ```
 
-- **`extends UserFacingException`** — TODO: explain inheritance.
+- **`extends UserFacingException`** — Inherits `RuntimeException` through `UserFacingException`, so apply failures are unchecked and do not force `throws` clauses across the futures-based service; the superclass marks the message as safe to display to the player rather than as an internal bug. Being `final` prevents handlers from depending on subtypes.
 
 ---
 
@@ -56,7 +63,7 @@ public final class ApplyException extends UserFacingException {
 public ApplyException(String message)
 ```
 
-TODO: Provide detailed design explanation for `ApplyException`.
+Stores the message and leaves the cause unset. This is used for conditions the player can act on (not single-player, server stopping) where there is no useful underlying exception to retain.
 
 ---
 
@@ -66,6 +73,6 @@ TODO: Provide detailed design explanation for `ApplyException`.
 public ApplyException(String message, Throwable cause)
 ```
 
-TODO: Provide detailed design explanation for `ApplyException`.
+Stores the message and cause; used by `begin` when a backup capture or backup write fails. The message remains the short chat-facing summary while the cause preserves the original stack for logs. The single-message constructor covers the server-stopped-mid-apply case.
 
 ---

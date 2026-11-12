@@ -1,0 +1,94 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam sequence {
+  ArrowColor #475569
+  LifeLineBorderColor #94A3B8
+  ParticipantBackgroundColor #E8F1FB
+  ParticipantBorderColor #2B6CB0
+  ActorBackgroundColor #FFFFFF
+  ActorBorderColor #333333
+}
+hide footbox
+
+title L4 - /git pull, apply mechanics and /git pull --abort
+
+actor Player as P
+participant "PullCommands" as PC
+participant "RepoService" as RS
+participant "PullService" as PS
+participant "SelectionService" as SEL
+participant "ApplyPlan" as AP
+participant "ApplyService" as AS
+participant "Integrated server" as SRV
+participant "SnapshotService" as SS
+participant "BackupService" as BS
+participant "EntityCodec" as EC
+
+== /git pull ==
+P -> PC : /git pull [name] [--remote r]
+PC -> PC : require single-player + repo
+PC -> RS : planPull(remote, NOOP)  [IO]
+RS -> RS : fetch refs, resolve remote HEAD
+RS -> RS : classify UP_TO_DATE / FAST_FORWARD / DIVERGED\n(pristine init commit counts as FAST_FORWARD)
+RS --> PC : PullPlan
+alt UP_TO_DATE
+  PC --> P : "Already up to date"
+else DIVERGED / not fast-forward
+  PC --> P : error: diverged, no merge in v1
+else FAST_FORWARD
+  PC -> PS : prepare(worldId, localSelections,\nplayerOrigin, repo, plan, onlySelection)  [IO]
+  PS -> RS : listSelectionsAt(plan.remoteHead())
+  PS -> RS : exportSelectionAt(head, name, tempDir)
+  PS -> PS : read meta.json + target snapshot\nread local HEAD snapshot
+  PS --> PC : List<PreparedPull>
+  loop each PreparedPull
+    PC -> SEL : createAt / get / addCuboid / setTracked\n(ensure local selection at localOrigin)
+    PC -> AP : between(selection, localHead,\nlocalOrigin, target, localOrigin, true)
+    AP --> PC : ApplyPlan
+    PC -> AS : apply(world, plan)
+    AS -> SRV : server.execute(begin)
+    SRV -> SS : capturePositions(allPositions)\npre-apply backup
+    SS --> SRV : Snapshot
+    SRV -> BS : store(worldId, owner, name, backup)  [IO]
+    BS --> SRV : backup Path
+    SRV -> SRV : beginWrites: removals -> air,\nplacements -> BlockState, sort (y,x,z)
+    loop until writes exhausted
+      SRV -> SRV : Job.process: <= blocksPerTick setBlock,\napply block-entity NBT
+      SRV -> SRV : server.execute(process) if more
+    end
+    SRV -> EC : apply entities (remove old, place new)
+    SRV --> AS : ApplyResult
+    AS --> PC : ApplyResult
+    PC --> P : "Applied: X placed, Y removed..."
+  end
+  PC -> RS : fastForward(plan)  [IO]
+  RS -> RS : git reset --hard plan.remoteHead
+  RS --> PC : moved
+  PC -> PS : cleanup(prepared)
+  PC --> P : "Pulled N selection(s) ..."
+end
+alt apply fails
+  PC -> PS : cleanup(prepared) (async)
+  PC --> P : "Pull failed; the local branch was not moved."
+end
+
+== /git pull --abort ==
+P -> PC : /git pull --abort [name]
+PC -> SEL : resolve selection
+PC -> BS : latest(worldId, owner, name)  [IO]
+BS --> PC : Backup(snapshot, file) or PullException
+PC -> AP : restore(selection, backup.snapshot)
+AP --> PC : ApplyPlan(absolute placements)
+PC -> AS : apply(world, plan)
+AS -> SRV : begin (writes a new backup first)
+SRV --> PC : ApplyResult
+PC --> P : restore summary
+
+note over AS,SRV
+  Apply is single-player only.
+  Blocks are written in tick batches.
+  A backup is written before writes begin.
+end note
+
+@enduml

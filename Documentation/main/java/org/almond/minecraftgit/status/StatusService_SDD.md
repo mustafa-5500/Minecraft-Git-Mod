@@ -34,7 +34,7 @@
 
 ## Usage
 
-TODO: Describe how `StatusService` is instantiated and used.
+Created once with the [`RepoManager`](../repo/RepoManager.md), [`StagingService`](../staging/StagingService.md) and logger, then shared by the `/git status` and `/git diff` command paths. The command layer captures the selected regions from the world and passes those snapshots plus the too-large/incomplete flags into `report` or `diff`; the service only reads repository and staged state and never mutates the world.
 
 ---
 
@@ -76,26 +76,26 @@ import java.util.UUID;
 
 | Import | Purpose |
 |--------|---------|
-| [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe purpose |
-| [`BlockPos`](../model/BlockPos.md) | TODO: describe purpose |
-| [`BuildDiff`](../model/BuildDiff.md) | TODO: describe purpose |
-| [`Selection`](../model/Selection.md) | TODO: describe purpose |
-| [`Snapshot`](../model/Snapshot.md) | TODO: describe purpose |
-| [`CommitMeta`](../repo/CommitMeta.md) | TODO: describe purpose |
-| [`RepoManager`](../repo/RepoManager.md) | TODO: describe purpose |
-| [`RepoService`](../repo/RepoService.md) | TODO: describe purpose |
-| [`QuadrantCsvReader`](../serialization/QuadrantCsvReader.md) | TODO: describe purpose |
-| [`StagedSelection`](../staging/StagedSelection.md) | TODO: describe purpose |
-| [`StagingService`](../staging/StagingService.md) | TODO: describe purpose |
-| `Files` | TODO: describe purpose |
-| `Path` | TODO: describe purpose |
-| `ArrayList` | TODO: describe purpose |
-| `Comparator` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
-| `Map` | TODO: describe purpose |
-| `Optional` | TODO: describe purpose |
-| `Set` | TODO: describe purpose |
-| `UUID` | TODO: describe purpose |
+| [`DebugLogger`](../debug/DebugLogger.md) | Logs repository and staged-snapshot read failures so status still renders. |
+| [`BlockPos`](../model/BlockPos.md) | Fallback origin used when a selection or commit metadata has no origin. |
+| [`BuildDiff`](../model/BuildDiff.md) | Computes coordinate-level block and entity differences between two snapshots. |
+| [`Selection`](../model/Selection.md) | Supplies selection name, owner/world, tracked flag, origin, cuboids and volume. |
+| [`Snapshot`](../model/Snapshot.md) | HEAD, staged and current capture payloads that are compared. |
+| [`CommitMeta`](../repo/CommitMeta.md) | Reads the committed origin from `meta.json` when loading HEAD. |
+| [`RepoManager`](../repo/RepoManager.md) | Resolves the `RepoService` for the requested world. |
+| [`RepoService`](../repo/RepoService.md) | Provides repository path, initialization state, branch and HEAD commit. |
+| [`QuadrantCsvReader`](../serialization/QuadrantCsvReader.md) | Decodes the committed CSV files into a HEAD snapshot. |
+| [`StagedSelection`](../staging/StagedSelection.md) | Carries the staged snapshot and its timestamp out of `StagingService`. |
+| [`StagingService`](../staging/StagingService.md) | Loads the local staged (index) snapshot for a selection. |
+| `Files` | Checks whether the HEAD selection directory exists. |
+| `Path` | Builds the `<repo>/<selection>` path for HEAD reads. |
+| `ArrayList` | Builds the per-selection status list in `report`. |
+| `Comparator` | Sorts statuses case-insensitively by name. |
+| `List` | Holds the request's selections and the report's statuses. |
+| `Map` | Looks up current captures by selection name. |
+| `Optional` | Represents missing staged snapshots and commit metadata. |
+| `Set` | Looks up too-large and incomplete selection names. |
+| `UUID` | Identifies the staging owner. |
 
 ---
 
@@ -105,6 +105,7 @@ import java.util.UUID;
 public final class StatusService {
 ```
 
+The class is final and holds only immutable collaborator references; every `report`/`diff` call is a fresh read-only computation, so the same instance can safely serve repeated status and diff commands.
 
 ---
 
@@ -118,9 +119,9 @@ private final DebugLogger debug;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `repos` | [`RepoManager`](../repo/RepoManager.md) | TODO: describe |
-| `staging` | [`StagingService`](../staging/StagingService.md) | TODO: describe |
-| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe |
+| `repos` | [`RepoManager`](../repo/RepoManager.md) | Resolves per-world repository services; no repository is opened at construction. |
+| `staging` | [`StagingService`](../staging/StagingService.md) | Source of the staged (index) snapshot and its existence. |
+| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | Logger for read failures downgraded to empty/unknown status. |
 
 ---
 
@@ -130,7 +131,7 @@ private final DebugLogger debug;
 public StatusService(RepoManager repos, StagingService staging, DebugLogger debug)
 ```
 
-TODO: Provide detailed design explanation for `StatusService`.
+Injects the three collaborators and performs no I/O; all repository and staging access happens per call, keyed by the `worldId`/`owner` arguments. This keeps `StatusService` usable during startup and in tests with stub collaborators.
 
 ---
 
@@ -141,7 +142,7 @@ public Report report(String worldId, UUID owner, List<Selection> selections,
                          Map<String, Snapshot> current, Set<String> tooLarge, Set<String> incomplete)
 ```
 
-TODO: Provide detailed design explanation for `report`.
+Resolves `repos.service(worldId)`, reads branch/HEAD only when the repository is initialized and inside a try/catch so a broken repository yields empty branch/HEAD, then maps each selection through `statusOf` using `current.get(name)`, `tooLarge.contains(name)` and `incomplete.contains(name)`. The resulting list is sorted by lower-cased name for stable chat output. The method is read-only and captures nothing from the world.
 
 ---
 
@@ -152,7 +153,7 @@ public DiffReport diff(String worldId, UUID owner, Selection selection, Snapshot
                            boolean tooLarge, boolean incomplete)
 ```
 
-TODO: Provide detailed design explanation for `diff`.
+Resolves the repository and reads HEAD only when initialized, loads the staged snapshot through the defensive `loadStaged`, and picks the base as staged, else HEAD, else `Snapshot.empty` at the selection origin (or world origin). `stagedDiff` compares HEAD/empty to staged, and `workingDiff` compares that base to `current`; both use `BuildDiff` on relative coordinates. A null or incomplete `current` yields an empty working diff rather than a misleading one.
 
 ---
 
@@ -163,7 +164,7 @@ private SelectionStatus statusOf(boolean initialized, RepoService repo, Selectio
                                      Snapshot current, boolean tooLarge, boolean incomplete)
 ```
 
-TODO: Provide detailed design explanation for `statusOf`.
+Central per-selection algorithm: load staged and HEAD, compute `stagedDiff` from the head/empty base to the staged snapshot, then choose the working base (staged, else HEAD, else empty at the current origin) and compute `workingDiff` against a complete current capture. If no complete capture exists it records zero counts and sets a note in priority order: too-large volume, incomplete chunks, or missing capture for a selection that is tracked, in HEAD or staged. All reads are defensive, and the record also carries selection volume/cuboid metadata and the `currentChecked` flag.
 
 ---
 
@@ -173,7 +174,7 @@ TODO: Provide detailed design explanation for `statusOf`.
 private Optional<StagedSelection> loadStaged(String worldId, UUID owner, Selection selection)
 ```
 
-TODO: Provide detailed design explanation for `loadStaged`.
+Wraps `staging.load` in a try/catch for `RuntimeException` (for example a corrupt or unreadable `.snap`) and returns `Optional.empty()` after logging; status therefore treats an unreadable index entry as "no staged data" instead of failing the whole command.
 
 ---
 
@@ -183,7 +184,7 @@ TODO: Provide detailed design explanation for `loadStaged`.
 private Snapshot readHead(RepoService repo, Selection selection)
 ```
 
-TODO: Provide detailed design explanation for `readHead`.
+Looks for `<repo.path()>/<selection.name()>` on disk, returns null when it is not a directory, then reads `meta.json` for the committed origin (falling back to the selection origin or `BlockPos.ORIGIN`) and delegates CSV parsing to `QuadrantCsvReader.readSelection`. Any exception is logged and converted to null, which maps to `inHead = false`; this reads the checked-out working tree, not a JGit tree object.
 
 ---
 
@@ -193,7 +194,7 @@ TODO: Provide detailed design explanation for `readHead`.
 public record DiffCounts(int added, int changed, int removed, int entityChanges)
 ```
 
-TODO: Provide detailed design explanation for `DiffCounts`.
+Value record used by both the API and internal logic to keep a diff's four counts together without retaining the full block/entity lists. The compact representation is what `SelectionStatus` stores and what `Report` aggregates.
 
 ---
 
@@ -203,7 +204,7 @@ TODO: Provide detailed design explanation for `DiffCounts`.
 public static DiffCounts zero()
 ```
 
-TODO: Provide detailed design explanation for `zero`.
+Factory for the neutral element used when a diff is not computed; it avoids null checks at the call sites and guarantees `clean()`/`total()` behave consistently.
 
 ---
 
@@ -213,7 +214,7 @@ TODO: Provide detailed design explanation for `zero`.
 public static DiffCounts of(BuildDiff diff)
 ```
 
-TODO: Provide detailed design explanation for `of`.
+Maps a `BuildDiff` to counters; the block lists contribute their sizes, and entity changes use `totalEntityChanges()` (additions plus removals) cast to int, matching the record's int contract.
 
 ---
 
@@ -223,7 +224,7 @@ TODO: Provide detailed design explanation for `of`.
 public boolean clean()
 ```
 
-TODO: Provide detailed design explanation for `clean`.
+Returns true only when all four counters are zero; it is the primitive behind `SelectionStatus.clean()` and therefore also drives the report's clean/dirty counts.
 
 ---
 
@@ -233,7 +234,7 @@ TODO: Provide detailed design explanation for `clean`.
 public int total()
 ```
 
-TODO: Provide detailed design explanation for `total`.
+Sums the counters into one int; entity changes are already counted individually, so this is a magnitude rather than a unique-coordinate count.
 
 ---
 
@@ -243,7 +244,7 @@ TODO: Provide detailed design explanation for `total`.
 public String summary()
 ```
 
-TODO: Provide detailed design explanation for `summary`.
+Builds the short chat form `+a ~c -r` and appends ` eN` only when `entityChanges > 0`, matching the wording used by the status renderer.
 
 ---
 
@@ -255,7 +256,7 @@ public record SelectionStatus(String name, boolean tracked, boolean inHead, bool
                                   DiffCounts stagedDiff, DiffCounts workingDiff, String note)
 ```
 
-TODO: Provide detailed design explanation for `SelectionStatus`.
+Composes selection metadata and the three-way comparison into one immutable row. `tracked` comes from the selection file, `inHead`/`staged` from the presence checks, `currentChecked` from `current != null && !incomplete`, and the two `DiffCounts` from the staged and working comparisons; `note` explains why a working diff was skipped. The helper predicates below derive the untracked/clean/dirty classification used by `Report`.
 
 ---
 
@@ -265,7 +266,7 @@ TODO: Provide detailed design explanation for `SelectionStatus`.
 public boolean clean()
 ```
 
-TODO: Provide detailed design explanation for `clean`.
+Returns true when both diff summaries are clean and no note is present; an untracked selection with no data satisfies this too, so the report pairs it with `untracked()`.
 
 ---
 
@@ -275,7 +276,7 @@ TODO: Provide detailed design explanation for `clean`.
 public boolean untracked()
 ```
 
-TODO: Provide detailed design explanation for `untracked`.
+True when the selection is not tracked, not in HEAD and has no staged snapshot; these are rows the repository has never seen.
 
 ---
 
@@ -285,7 +286,7 @@ TODO: Provide detailed design explanation for `untracked`.
 public boolean dirty()
 ```
 
-TODO: Provide detailed design explanation for `dirty`.
+True for any known selection that is not clean, i.e. it has staged or working changes or an explanatory note; untracked rows are excluded by design.
 
 ---
 
@@ -295,7 +296,7 @@ TODO: Provide detailed design explanation for `dirty`.
 public record Report(boolean repoInitialized, String branch, String head, List<SelectionStatus> selections)
 ```
 
-TODO: Provide detailed design explanation for `Report`.
+Top-level immutable result of `report`: repository identity plus the sorted per-selection rows. The count helpers stream over `selections`; because `clean()` also returns true for untracked rows, `cleanCount` explicitly excludes them.
 
 ---
 
@@ -305,7 +306,7 @@ TODO: Provide detailed design explanation for `Report`.
 public long dirtyCount()
 ```
 
-TODO: Provide detailed design explanation for `dirtyCount`.
+Counts rows whose `dirty()` predicate is true; it streams the status list on each call, which is negligible for the number of selections.
 
 ---
 
@@ -315,7 +316,7 @@ TODO: Provide detailed design explanation for `dirtyCount`.
 public long untrackedCount()
 ```
 
-TODO: Provide detailed design explanation for `untrackedCount`.
+Counts rows whose `untracked()` predicate is true.
 
 ---
 
@@ -325,7 +326,7 @@ TODO: Provide detailed design explanation for `untrackedCount`.
 public long cleanCount()
 ```
 
-TODO: Provide detailed design explanation for `cleanCount`.
+Counts rows that are both not untracked and clean; this is the complement of dirty plus untracked and is used by the status header summary.
 
 ---
 
@@ -336,6 +337,6 @@ public record DiffReport(SelectionStatus status, BuildDiff stagedDiff, BuildDiff
                              Snapshot current)
 ```
 
-TODO: Provide detailed design explanation for `DiffReport`.
+Bundles the per-selection `SelectionStatus` with the actual `BuildDiff` objects and the current snapshot so `/git diff` can render detail without recomputing anything. `stagedDiff` is HEAD/empty vs staged and `workingDiff` is staged/HEAD/empty vs current; `current` may be null when no capture was taken.
 
 ---

@@ -16,7 +16,7 @@
 
 ## Usage
 
-TODO: Describe how `CsvLine` is instantiated and used.
+`CsvLine` has only static methods, so it is never instantiated; the writer funnels every emitted row through `format`, and the reader funnels every file line through `parse`. Keeping both directions in one class means the quoting rules are applied and undone by the same code, so a block-state string containing a comma or a Base64 payload is quoted exactly once.
 
 ---
 
@@ -40,8 +40,8 @@ import java.util.List;
 
 | Import | Purpose |
 |--------|---------|
-| `ArrayList` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
+| `ArrayList` | Backs the growable field list that `parse` fills while scanning a line. |
+| `List` | Input type of `format` and return type of `parse`, keeping the API independent of the concrete list implementation. |
 
 ---
 
@@ -60,7 +60,7 @@ public final class CsvLine {
 private CsvLine()
 ```
 
-TODO: Provide detailed design explanation for `CsvLine`.
+Private no-argument constructor that suppresses the implicit public one, making the utility class non-instantiable; it has no body and no state to initialise.
 
 ---
 
@@ -70,7 +70,7 @@ TODO: Provide detailed design explanation for `CsvLine`.
 public static String format(List<String> fields)
 ```
 
-TODO: Provide detailed design explanation for `format`.
+Iterates the input list, appends a comma before every field after the first, and delegates quoting to `escape`. No line terminator is produced: `QuadrantCsvWriter.writeLine` appends the LF so that every generated file uses the repository's LF convention.
 
 ---
 
@@ -80,7 +80,7 @@ TODO: Provide detailed design explanation for `format`.
 public static String escape(String value)
 ```
 
-TODO: Provide detailed design explanation for `escape`.
+First scans for `,`, `"`, `\n` or `\r`; when none is present the value is returned untouched. Otherwise it wraps the value in double quotes and replaces each `"` with `""`, which is the RFC-4180 escape. `null` and the empty string both produce an empty field, preserving the empty-means-untracked cell convention.
 
 ---
 
@@ -90,6 +90,6 @@ TODO: Provide detailed design explanation for `escape`.
 public static List<String> parse(String line)
 ```
 
-TODO: Provide detailed design explanation for `parse`.
+Single left-to-right scan with a `quoted` flag. Outside quotes, `,` terminates the current cell and the cell text is added to the list, while `"` starts quoting only when the current cell is still empty (start of field); any other character is appended literally. Inside quotes, `""` appends one quote and skips the second, and a lone `"` closes the field. A final cell is always appended, so `a,b,` has three fields and an empty line has one empty field, and malformed input is tolerated rather than raising an exception.
 
 ---

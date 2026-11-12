@@ -1,0 +1,72 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam sequence {
+  ArrowColor #475569
+  LifeLineBorderColor #94A3B8
+  ParticipantBackgroundColor #E8F1FB
+  ParticipantBorderColor #2B6CB0
+  ActorBackgroundColor #FFFFFF
+  ActorBorderColor #333333
+}
+hide footbox
+
+title L4 - Wand click to selection cuboid
+
+actor Player as P
+participant "WandEvents" as WE
+participant "WandItem" as WI
+participant "WorldContext" as WC
+participant "SelectionManager" as SM
+participant "SelectionService" as SS
+database "SelectionMetadataStore" as SDS
+participant "RepoManager" as RM
+database "RepoMetadataStore" as RMS
+
+P -> WE : attack/use block\n(main hand, ClientLevel)
+WE -> WI : isWand(mainHand, config, player)
+WI --> WE : custom data or\nsneak fallback
+
+alt not a wand / not local player
+  WE --> P : InteractionResult.PASS\n(vanilla click continues)
+else wand click
+  WE -> WC : current(client)
+  WC --> WE : WorldContext(worldId, dimension, singleplayer)
+  WE -> SM : setCorner(player, first, BlockPos)
+  SM -> SM : Session.cornerA/B = pos
+  alt only one corner stored
+    SM --> WE : Optional.empty()
+    WE --> P : action bar "Corner A/B set at ..."
+  else both corners present
+    SM -> SM : Cuboid.of(a, b)\nclear cornerA/B
+    SM --> WE : Optional.of(Cuboid)
+    WE -> SM : active(world, player)
+    SM -> RM : lastSelection(worldId)
+    RM --> SM : remembered name
+    SM -> SS : find(worldId, owner, name)
+    SS --> SM : Optional<Selection>
+    SM --> WE : active name or null
+
+    alt no active selection
+      WE -> SM : setPending(player, cuboid)
+      WE --> P : "Cuboid ready (...); create/select\nand /git selection add"
+    else active selection
+      WE -> SS : addCuboid(worldId, owner, name, cuboid)
+      SS -> SS : validate count/volume\nSelection.addCuboid (sort, seed origin)
+      SS -> SDS : save(selections) atomic JSON
+      SS --> WE : Selection
+      WE -> SM : setActive(world, player, name)
+      SM -> RM : setLastSelection(worldId, name)
+      RM -> RMS : save(RepoMetadata) atomic JSON
+      WE --> P : "Added WxHxD to '<name>'"
+    end
+
+    note over WE
+      The event returns InteractionResult.FAIL,
+      so the click never breaks or uses the
+      block (a remote server never sees it).
+    end note
+  end
+end
+
+@enduml

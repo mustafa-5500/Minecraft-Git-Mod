@@ -14,7 +14,7 @@
 
 ## Usage
 
-TODO: Describe how `UserFacingException` is instantiated and used.
+Subclassed by the mod's domain exceptions such as `SelectionException`, `CommitException`, `ApplyException`, `PullException` and `RepoException`, and thrown directly for simple preconditions such as `Open a world first.`
 
 ---
 
@@ -38,7 +38,7 @@ package org.almond.minecraftgit.util;
 public class UserFacingException extends RuntimeException {
 ```
 
-- **`extends RuntimeException`** — TODO: explain inheritance.
+Unchecked so service code can throw it without declaring it; `CommandSupport` uses the type as the marker for show-this-message-without-a-stack-trace.
 
 ---
 
@@ -48,7 +48,7 @@ public class UserFacingException extends RuntimeException {
 public UserFacingException(String message)
 ```
 
-TODO: Provide detailed design explanation for `UserFacingException`.
+Passes the message to `RuntimeException` with no cause; used when there is nothing to chain.
 
 ---
 
@@ -58,6 +58,6 @@ TODO: Provide detailed design explanation for `UserFacingException`.
 public UserFacingException(String message, Throwable cause)
 ```
 
-TODO: Provide detailed design explanation for `UserFacingException`.
+Passes both message and cause through, preserving the stack chain for debug logs while chat still shows only the message.
 
 ---

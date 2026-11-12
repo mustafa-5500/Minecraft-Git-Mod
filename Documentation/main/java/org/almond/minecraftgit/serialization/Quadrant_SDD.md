@@ -22,7 +22,7 @@
 
 ## Usage
 
-TODO: Describe how `Quadrant` is instantiated and used.
+`Quadrant` is an enum and is never instantiated directly: `QuadrantCsvWriter` calls `fromOffsets` to bucket each block into one of the four files per Y level, and `QuadrantCsvReader` calls `fromCode` on the header then uses `rowToX`/`columnToZ` to turn a row and column back into relative offsets. For a block at relative `(-3, 5)`, `Quadrant.fromOffsets(-3, 5)` returns `NP`, whose row `2` and column `5` map back to `-3` and `5`.
 
 ---
 
@@ -60,9 +60,9 @@ private final boolean positiveZ;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `code` | `String` | TODO: describe |
-| `positiveX` | `boolean` | TODO: describe |
-| `positiveZ` | `boolean` | TODO: describe |
+| `code` | `String` | Two-letter code supplied per constant and returned by `code()`; used as the file stem and the `quadrant=` header value. |
+| `positiveX` | `boolean` | Sign flag for X, set to `true` for `PP` and `PN`; it selects the branch taken by `rowToX`/`rowForX`. |
+| `positiveZ` | `boolean` | Sign flag for Z, set to `true` for `PP` and `NP`; it selects the branch taken by `columnToZ`/`columnForZ`. |
 
 ---
 
@@ -72,7 +72,7 @@ private final boolean positiveZ;
 public String code()
 ```
 
-TODO: Provide detailed design explanation for `code`.
+Trivial accessor for the `code` field; the writer concatenates it with `.csv` and the reader matches it against the `quadrant=` group of the header regex, so the value must stay in sync with both.
 
 ---
 
@@ -82,7 +82,7 @@ TODO: Provide detailed design explanation for `code`.
 public boolean positiveX()
 ```
 
-TODO: Provide detailed design explanation for `positiveX`.
+Trivial accessor for the X sign flag; it exists for symmetry and for callers that need the sign without performing a mapping, while the mapping methods read the field directly.
 
 ---
 
@@ -92,7 +92,7 @@ TODO: Provide detailed design explanation for `positiveX`.
 public boolean positiveZ()
 ```
 
-TODO: Provide detailed design explanation for `positiveZ`.
+Trivial accessor for the Z sign flag; like `positiveX()`, it exposes the constant's side of the origin without converting an index.
 
 ---
 
@@ -112,7 +112,7 @@ Row 0 is the origin-adjacent coordinate; rows grow away from the origin.
 public int columnToZ(int column)
 ```
 
-TODO: Provide detailed design explanation for `columnToZ`.
+Read-side half of the column mapping, called once per parsed cell with the zero-based column index. Positive-Z quadrants return the index unchanged; negative-Z quadrants return `-column - 1`, so column 0 is always the cell next to the origin and the values grow away from it (`-1`, `-2`, …).
 
 ---
 
@@ -122,7 +122,7 @@ TODO: Provide detailed design explanation for `columnToZ`.
 public int rowForX(int rx)
 ```
 
-TODO: Provide detailed design explanation for `rowForX`.
+Write-side inverse of `rowToX`. The writer calls it for every block in a quadrant both to find the maximum row (which fixes the number of data rows) and to look a block up while filling a row, so it must stay exactly inverse to `rowToX` or cells would be written to the wrong coordinate.
 
 ---
 
@@ -132,7 +132,7 @@ TODO: Provide detailed design explanation for `rowForX`.
 public int columnForZ(int rz)
 ```
 
-TODO: Provide detailed design explanation for `columnForZ`.
+Write-side inverse of `columnToZ`. It fixes the width of every row in the quadrant: the writer takes the maximum column over all cells and emits that many fields per row, padding unused trailing cells with empty (untracked) values.
 
 ---
 
@@ -142,7 +142,7 @@ TODO: Provide detailed design explanation for `columnForZ`.
 public static Quadrant fromOffsets(int rx, int rz)
 ```
 
-TODO: Provide detailed design explanation for `fromOffsets`.
+Bucketing factory used by the writer to split blocks into the four files. The test is `rx >= 0` and `rz >= 0`, so coordinate 0 is deliberately assigned to the positive quadrant; the four combinations produce `PP`, `PN`, `NP` and `NN`. It performs no validation and cannot fail.
 
 ---
 
@@ -152,6 +152,6 @@ TODO: Provide detailed design explanation for `fromOffsets`.
 public static Quadrant fromCode(String code)
 ```
 
-TODO: Provide detailed design explanation for `fromCode`.
+Parses the `quadrant=<pp|pn|np|nn>` field of a block CSV header. It scans `values()` and compares with `equalsIgnoreCase`, so a hand-edited header in uppercase still loads; an unmatched code throws `SerializationException` rather than returning a default, which lets the reader report the offending file instead of silently misplacing blocks.
 
 ---

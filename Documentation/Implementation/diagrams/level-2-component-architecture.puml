@@ -1,0 +1,178 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam component {
+  BackgroundColor #E8F1FB
+  BorderColor #2B6CB0
+}
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #64748B
+}
+skinparam database {
+  BackgroundColor #FDF6E3
+  BorderColor #B7791F
+}
+skinparam cloud {
+  BackgroundColor #F0FDF4
+  BorderColor #2F855A
+}
+hide stereotype
+
+title L2 - Component Architecture: services, data and collaborators
+
+package "src/client" {
+  component "MinecraftGitClient\nentrypoint + lifecycle" as entry
+  component "GitServices\nservice graph + IO pool" as services
+  component "WorldContext\nworld id / server bridge" as worldctx
+
+  package "command" {
+    component "GitCommand\n+ CommandSupport" as gitcmd
+    component "RepoCommands" as repocmd
+    component "SelectionCommands" as selcmd
+    component "StagingCommands" as stagecmd
+    component "CommitCommands" as commitcmd
+    component "StatusCommands" as statuscmd
+    component "PullCommands" as pullcmd
+  }
+
+  package "selection" {
+    component "WandItem / WandEvents" as wand
+    component "SelectionManager\nper-player session" as selmgr
+    component "SelectionRenderer\nparticles" as renderer
+  }
+
+  package "world" {
+    component "WorldAccess\nthread chooser" as worldaccess
+    component "ApplyService\ntick-batched job" as apply
+  }
+}
+
+package "src/main" {
+  package "model" {
+    component "Selection / Cuboid / BlockPos" as modelgeombox
+    component "Snapshot / BlockSnapshot / EntitySnapshot" as modelsnap
+    component "BuildDiff" as diff
+  }
+
+  package "serialization" {
+    component "QuadrantCsvWriter / Reader\nCsvLine / Quadrant" as csv
+    component "BlockStateCodec / BlockEntityCodec\nEntityCodec / SnapshotCell" as codecs
+  }
+
+  package "repo" {
+    component "RepoManager\n+ RepoMetadataStore" as repomgr
+    component "RepoService\nJGit facade" as reposvc
+    component "PullPlan / RepoInfo\nCommitInfo / RemoteInfo" as repotypes
+  }
+
+  component "SelectionService\n+ SelectionMetadataStore" as selsvc
+  component "SnapshotService\nworld -> Snapshot" as snapsvc
+  component "StagingService\n+ SnapshotStore" as stagesvc
+  component "CommitService" as commitsvc
+  component "StatusService" as statussvc
+  component "PullService\nexport + prepare" as pullsvc
+  component "BackupService" as backupsvc
+  component "ModConfig / DebugLogger / Names" as support
+}
+
+database "Local data\nconfig/minecraftgit" as local
+component "JGit 6.10\n(bundled)" as jgit
+cloud "Git remote" as remote
+
+entry --> services
+services --> gitcmd
+services --> wand
+services --> renderer
+services --> worldaccess
+services --> apply
+services --> selsvc
+services --> snapsvc
+services --> stagesvc
+services --> commitsvc
+services --> statussvc
+services --> pullsvc
+services --> backupsvc
+services --> repomgr
+services --> worldctx
+
+gitcmd --> repocmd
+gitcmd --> selcmd
+gitcmd --> stagecmd
+gitcmd --> commitcmd
+gitcmd --> statuscmd
+gitcmd --> pullcmd
+
+wand --> selmgr
+selcmd --> selmgr
+selmgr --> selsvc
+selmgr --> repomgr
+renderer --> selmgr
+renderer --> selsvc
+
+stagecmd --> worldaccess
+stagecmd --> stagesvc
+stagecmd --> selsvc
+stagecmd --> selmgr
+statuscmd --> worldaccess
+statuscmd --> statussvc
+statuscmd --> selsvc
+statuscmd --> stagesvc
+commitcmd --> commitsvc
+commitcmd --> selsvc
+commitcmd --> stagesvc
+pullcmd --> reposvc
+pullcmd --> pullsvc
+pullcmd --> apply
+pullcmd --> selsvc
+pullcmd --> backupsvc
+repocmd --> repomgr
+repocmd --> reposvc
+
+worldaccess --> snapsvc
+worldaccess --> worldctx
+apply --> snapsvc
+apply --> backupsvc
+
+snapsvc --> codecs
+snapsvc --> modelsnap
+snapsvc --> modelgeombox
+stagesvc --> modelsnap
+stagesvc --> local
+commitsvc --> stagesvc
+commitsvc --> csv
+commitsvc --> repomgr
+commitsvc --> modelsnap
+commitsvc --> diff
+statussvc --> stagesvc
+statussvc --> reposvc
+statussvc --> csv
+statussvc --> diff
+pullsvc --> reposvc
+pullsvc --> csv
+pullsvc --> modelsnap
+pullsvc --> local
+backupsvc --> stagesvc
+selsvc --> modelgeombox
+selsvc --> local
+repomgr --> reposvc
+reposvc --> jgit
+reposvc --> modelsnap
+reposvc --> local
+jgit --> remote
+
+note right of services
+  One GitServices instance per client session.
+  The IO executor has 2 daemon threads.
+  Commands return results to the client thread.
+end note
+
+note bottom of reposvc
+  RepoService serializes all public calls
+  with one ReentrantLock because JGit
+  Repository is not thread-safe.
+end note
+
+@enduml

@@ -1,0 +1,74 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam componentStyle rectangle
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #64748B
+}
+skinparam component {
+  BackgroundColor #E8F1FB
+  BorderColor #2B6CB0
+}
+skinparam database {
+  BackgroundColor #FDF6E3
+  BorderColor #B7791F
+}
+skinparam cloud {
+  BackgroundColor #F0FDF4
+  BorderColor #2F855A
+}
+hide stereotype
+left to right direction
+
+title L3 - Build Data Flow Overview
+
+component "World\nblocks + entities\n(ClientLevel or ServerLevel)" as world
+component "SnapshotService\ncapture / capturePositions" as capture
+component "CaptureResult\nSnapshot + skips/warnings" as result
+component "StagingService\n+ SnapshotStore\n(gzip .snap)" as staging
+component "StagedSelection" as staged
+component "CommitService\nCSV tree + meta.json" as commit
+component "RepoService\nJGit commitWorkspace" as repo
+database "Repository\nworktree + .git" as git
+cloud "Git remote" as remote
+component "PullService\nprepare / checkout" as pull
+component "ApplyPlan\nplacements/removals" as plan
+component "ApplyService\ntick-batched writes" as apply
+component "BackupService\npre-apply .snap" as backup
+component "StatusService\nHEAD vs staged vs current" as status
+component "BuildDiff" as diff
+
+world --> capture : read blocks,\nblock entities,\nentities
+capture --> result : Snapshot\n(relative coords)
+result --> staging : /git add
+staging --> staged : stage/load
+staged --> commit : /git commit
+commit --> repo : Map<String,byte[]>\n+ replaced dirs\n+ message
+repo --> git : delete/write/stage/commit
+git <--> remote : push / fetch
+remote --> pull : fetch + export\ncommit tree
+pull --> plan : PreparedPull\nSnapshot + origins
+plan --> apply : apply(plan)
+apply --> world : setBlock /\nadd entity /\ndiscard entity
+apply --> backup : capturePositions\n+ store
+backup --> apply : restore on --abort
+git --> status : HEAD snapshot
+staging --> status : staged snapshot
+world --> status : current capture
+status --> diff : BuildDiff.between
+diff --> status : DiffCounts / Report
+
+note bottom of apply
+  Single-player only.
+  Runs on the integrated-server thread,
+  at most config.blocksPerTick writes
+  per server tick.
+end note
+
+note bottom of staging
+  Local-only, per world + player +
+  selection. Never committed.
+end note
+
+@enduml

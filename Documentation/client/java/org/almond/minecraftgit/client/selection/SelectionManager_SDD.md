@@ -25,7 +25,7 @@
 
 ## Usage
 
-TODO: Describe how `SelectionManager` is instantiated and used.
+Constructed once by `GitServices` as `new SelectionManager(selections, repos)` and reached through `services.selectionManager()`; `WandEvents` writes corners and pending state, `SelectionRenderer` reads them from the render tick, and selection and staging commands consume the pending cuboid. Sessions live only in memory keyed by player UUID, while the active name is persisted in repo metadata through `RepoManager`, which is why it survives a restart.
 
 ---
 
@@ -33,7 +33,7 @@ TODO: Describe how `SelectionManager` is instantiated and used.
 
 Per-player wand session state: the two pending corners, the last completed
 cuboid, and the active selection name. The durable selection list lives in
-{@link SelectionService}; the remembered active name is stored in local repo
+`SelectionService`; the remembered active name is stored in local repo
 metadata so it survives a restart.
 
 ---
@@ -59,16 +59,16 @@ import java.util.concurrent.ConcurrentHashMap;
 
 | Import | Purpose |
 |--------|---------|
-| [`WorldContext`](../WorldContext.md) | TODO: describe purpose |
-| [`BlockPos`](../../../../../../../main/java/org/almond/minecraftgit/model/BlockPos.md) | TODO: describe purpose |
-| [`Cuboid`](../../../../../../../main/java/org/almond/minecraftgit/model/Cuboid.md) | TODO: describe purpose |
-| [`RepoManager`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoManager.md) | TODO: describe purpose |
-| [`SelectionService`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionService.md) | TODO: describe purpose |
-| `Player` | TODO: describe purpose |
-| `Map` | TODO: describe purpose |
-| `Optional` | TODO: describe purpose |
-| `UUID` | TODO: describe purpose |
-| `ConcurrentHashMap` | TODO: describe purpose |
+| [`WorldContext`](../WorldContext.md) | Supplies the world id used to scope the remembered active selection and its metadata. |
+| [`BlockPos`](../../../../../../../main/java/org/almond/minecraftgit/model/BlockPos.md) | Type of the two corners and of the coordinates stored per session. |
+| [`Cuboid`](../../../../../../../main/java/org/almond/minecraftgit/model/Cuboid.md) | Built from two corners and handed to the command layer as the pending cuboid. |
+| [`RepoManager`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoManager.md) | Reads and writes the remembered active selection name in per-world local metadata. |
+| [`SelectionService`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionService.md) | Verifies that a remembered selection name still exists for the player. |
+| `Player` | Supplies the UUID used as the session-map key. |
+| `Map` | Field type of the session map. |
+| `Optional` | Return type of `setCorner`, making "not yet complete" explicit. |
+| `UUID` | Player identity used as the map key. |
+| `ConcurrentHashMap` | Thread-safe map enabling lazy session creation through `computeIfAbsent`. |
 
 ---
 
@@ -91,9 +91,9 @@ private final Map<UUID, Session> sessions;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `selections` | [`SelectionService`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionService.md) | TODO: describe |
-| `repos` | [`RepoManager`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoManager.md) | TODO: describe |
-| `sessions` | `Map<UUID, Session>` | TODO: describe |
+| `selections` | [`SelectionService`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionService.md) | Durable store used only to validate the active name; this manager never mutates it. |
+| `repos` | [`RepoManager`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoManager.md) | Metadata source for the remembered name (`lastSelection` and `setLastSelection`), keyed by world id. |
+| `sessions` | `Map<UUID, Session>` | Per-player in-memory state; entries are created on demand and never persisted, so a restart loses corners and pending cuboids but keeps the active name. |
 
 ---
 
@@ -103,7 +103,7 @@ private final Map<UUID, Session> sessions;
 public SelectionManager(SelectionService selections, RepoManager repos)
 ```
 
-TODO: Provide detailed design explanation for `SelectionManager`.
+Captures both collaborators and allocates an empty `ConcurrentHashMap`; there is no IO and no eager session creation. The manager lives inside one `GitServices`, so its sessions are scoped to the client session.
 
 ---
 
@@ -113,7 +113,7 @@ TODO: Provide detailed design explanation for `SelectionManager`.
 public Session session(Player player)
 ```
 
-TODO: Provide detailed design explanation for `session`.
+Uses `computeIfAbsent(player.getUUID(), ...)` to get or create the `Session`, so a player always resolves to one object even if two callbacks race. The returned object is mutable state and is used on the client thread only.
 
 ---
 
@@ -123,7 +123,7 @@ TODO: Provide detailed design explanation for `session`.
 public String active(WorldContext world, Player player)
 ```
 
-Active selection name, or {@code null} when none is remembered/valid.
+Active selection name, or `null` when none is remembered/valid.
 
 ---
 
@@ -133,7 +133,7 @@ Active selection name, or {@code null} when none is remembered/valid.
 public void setActive(WorldContext world, Player player, String name)
 ```
 
-TODO: Provide detailed design explanation for `setActive`.
+Delegates to `repos.setLastSelection(world.id(), name)`, which persists the name in local repo metadata; commands pass an empty string to clear it. Validation is deliberately skipped, so `active` filters out names that no longer exist when they are read back.
 
 ---
 
@@ -143,7 +143,7 @@ TODO: Provide detailed design explanation for `setActive`.
 public Optional<Cuboid> setCorner(Player player, boolean first, BlockPos pos)
 ```
 
-TODO: Provide detailed design explanation for `setCorner`.
+Writes the clicked position into `cornerA` or `cornerB` and, once both exist, builds a `Cuboid` with `Cuboid.of` (which normalizes the corners) and nulls both fields so the next pair starts clean. Returning `Optional.empty()` on the first click is what lets `WandEvents` show the corner confirmation without extra state.
 
 ---
 
@@ -153,7 +153,7 @@ TODO: Provide detailed design explanation for `setCorner`.
 public Cuboid takePending(Player player)
 ```
 
-TODO: Provide detailed design explanation for `takePending`.
+Clears the session's pending field and returns the old value, so the command flow consumes it exactly once. A caller that fails to add the cuboid must call `setPending` to restore it, which `/git selection add` does on a `SelectionException`.
 
 ---
 
@@ -163,7 +163,7 @@ TODO: Provide detailed design explanation for `takePending`.
 public void setPending(Player player, Cuboid cuboid)
 ```
 
-TODO: Provide detailed design explanation for `setPending`.
+Assigns the pending field directly; used by `WandEvents.completeCuboid` when no selection is active or an add fails, and by commands restoring a failed add.
 
 ---
 
@@ -173,7 +173,7 @@ TODO: Provide detailed design explanation for `setPending`.
 public Cuboid peekPending(Player player)
 ```
 
-TODO: Provide detailed design explanation for `peekPending`.
+Returns the field without clearing it; the renderer calls it once per drawn tick to outline the pending cuboid.
 
 ---
 
@@ -183,7 +183,7 @@ TODO: Provide detailed design explanation for `peekPending`.
 public void clear(Player player)
 ```
 
-TODO: Provide detailed design explanation for `clear`.
+Removes the UUID entry from the map, dropping corners and pending state; the next access through `session` creates a blank session.
 
 ---
 
@@ -193,7 +193,7 @@ TODO: Provide detailed design explanation for `clear`.
 public BlockPos cornerA()
 ```
 
-TODO: Provide detailed design explanation for `cornerA`.
+Reads the private session field for diagnostics and tests; the value is null between cuboid completions and after `clear`.
 
 ---
 
@@ -203,7 +203,7 @@ TODO: Provide detailed design explanation for `cornerA`.
 public BlockPos cornerB()
 ```
 
-TODO: Provide detailed design explanation for `cornerB`.
+Reads corner B without clearing it; it is null until set and again after a cuboid completes.
 
 ---
 
@@ -213,6 +213,6 @@ TODO: Provide detailed design explanation for `cornerB`.
 public Cuboid pendingCuboid()
 ```
 
-TODO: Provide detailed design explanation for `pendingCuboid`.
+Reads the pending field without consuming it, kept separate from `peekPending` so callers already holding a `Session` can inspect it.
 
 ---

@@ -1,0 +1,60 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam componentStyle rectangle
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #64748B
+}
+skinparam component {
+  BackgroundColor #E8F1FB
+  BorderColor #2B6CB0
+}
+skinparam database {
+  BackgroundColor #FDF6E3
+  BorderColor #B7791F
+}
+skinparam cloud {
+  BackgroundColor #F0FDF4
+  BorderColor #2F855A
+}
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+
+title L1 - System Context: Minecraft Git
+
+actor "Player\n(/git commands, wand clicks)" as player
+
+rectangle "Player's machine" {
+  component "Minecraft client\n(client thread)" as client
+  component "Integrated server\n(single-player world)" as server
+  component "Minecraft Git mod\n(Fabric client mod)" as mod
+  database "Local data\nconfig/minecraftgit/\nrepos, meta, selections,\nstaging, backups, logs, tmp" as local
+  component "Bundled JGit\n(in the mod jar)" as jgit
+}
+
+cloud "Git remote\n(local path or HTTP(S))" as remote
+
+player --> client : chat command / click
+player --> server : single-player world
+
+client --> mod : registers commands,\nwand events, renderer
+mod --> client : chat feedback,\nparticle previews
+mod --> server : server.execute(...)\ncapture and apply
+server --> mod : ServerLevel reads/writes\n(integrated server only)
+
+mod --> local : read/write\nJSON, .snap, CSV trees
+mod --> jgit : commit, fetch, push,\nreset --hard
+jgit --> remote : Git protocol\n(file/HTTP)
+
+note right of remote
+  Apply is single-player only.
+  In multiplayer the mod can
+  capture client chunks,
+  commit, fetch and push,
+  but never writes the world.
+end note
+
+@enduml

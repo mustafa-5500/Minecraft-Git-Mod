@@ -15,17 +15,17 @@
 
 ## Usage
 
-TODO: Add usage examples for `EntityCodec`.
+`EntityCodec.encode` serialises a live entity during capture and `apply` recreates it in a `ServerLevel` during a pull; the encoded text becomes the Base64 column of `entities.csv`. For example, an item frame is encoded as `nbt:{...}` and applied at the absolute position computed from the snapshot's relative offsets plus the selection origin.
 
 Serializes entities as SNBT plus their registry type id. The position and
-rotation live in {@link EntitySnapshot} so a build can be shifted to a new
+rotation live in `EntitySnapshot` so a build can be shifted to a new
 origin without rewriting NBT.
 
 ---
 
 ## Fields
 
-- `PREFIX` (`String`) — TODO: describe field
+- `PREFIX` (`String`) — Literal `nbt:` prefixed to every encoded entity and stripped by `apply` before parsing; it identifies the payload as native SNBT in the CSV.
 
 ---
 
@@ -37,7 +37,7 @@ private EntityCodec()
 ```
 
 ### Description
-TODO: Describe what `EntityCodec` does.
+Private and empty: the class is a static namespace for entity serialisation and is never instantiated.
 
 ### Parameters
 None.
@@ -55,15 +55,15 @@ public static String encode(Entity entity)
 ```
 
 ### Description
-TODO: Describe what `encode` does.
+Calls `Entity#saveWithoutId(new CompoundTag())` and returns `nbt:` plus the resulting SNBT, so the entity type is stored separately in its own CSV column and re-inserted as `id` when the entity is recreated. Position and rotation are also carried in the `EntitySnapshot`, which is what allows a build to be shifted to a new origin without rewriting NBT.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `entity` | `Entity` | TODO: describe |
+| `entity` | `Entity` | Entity to serialise; must not be `null`. |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — SNBT payload beginning with `nbt:`.
 
 ---
 
@@ -76,20 +76,22 @@ public static Entity apply(ServerLevel level, EntitySnapshot snapshot,
 ```
 
 ### Description
-Create and add the entity at an absolute position. Returns {@code null}
+Create and add the entity at an absolute position. Returns `null`
 when the payload or type is not loadable in this world.
+
+A parse or creation failure raises `SerializationException` naming the entity type.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `level` | `ServerLevel` | TODO: describe |
-| `snapshot` | [`EntitySnapshot`](../model/EntitySnapshot.md) | TODO: describe |
-| `x` | `double` | TODO: describe |
-| `y` | `double` | TODO: describe |
-| `z` | `double` | TODO: describe |
+| `level` | `ServerLevel` | Server level that receives the new entity. |
+| `snapshot` | [`EntitySnapshot`](../model/EntitySnapshot.md) | Snapshot supplying the type, yaw, pitch and SNBT payload. |
+| `x` | `double` | Absolute world X for the entity position. |
+| `y` | `double` | Absolute world Y for the entity position. |
+| `z` | `double` | Absolute world Z for the entity position. |
 
 ### Returns
-`Entity` — TODO: describe return value.
+`Entity` — The entity added to the level, or `null` when the payload is blank or the type cannot be created.
 
 ---
 
@@ -101,15 +103,15 @@ public static int payloadBytes(String payload)
 ```
 
 ### Description
-TODO: Describe what `payloadBytes` does.
+Returns the UTF-8 byte length of the payload (`0` for `null`), used by the capture code to enforce the configured payload byte limit before storing the entity.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `payload` | `String` | TODO: describe |
+| `payload` | `String` | Payload to measure; may be `null`. |
 
 ### Returns
-`int` — TODO: describe return value.
+`int` — Number of UTF-8 bytes, never negative.
 
 ---
 

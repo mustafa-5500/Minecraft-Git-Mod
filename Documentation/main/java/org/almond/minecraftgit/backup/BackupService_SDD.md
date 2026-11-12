@@ -21,7 +21,7 @@
 
 ## Usage
 
-TODO: Describe how `BackupService` is instantiated and used.
+`GitServices` creates the service once with `config.backupsRoot()` and `config.maxBackups`, then hands it to `ApplyService` (write path) and `PullCommands` (restore path); all calls are blocking filesystem work, so the write happens on the IO executor. There is no instance lock: name uniqueness comes from the static sequence and per-directory operations are independent.
 
 ---
 
@@ -57,19 +57,19 @@ import java.util.stream.Stream;
 
 | Import | Purpose |
 |--------|---------|
-| [`Snapshot`](../model/Snapshot.md) | TODO: describe purpose |
-| [`SnapshotStore`](../staging/SnapshotStore.md) | TODO: describe purpose |
-| [`Names`](../util/Names.md) | TODO: describe purpose |
-| `IOException` | TODO: describe purpose |
-| `Files` | TODO: describe purpose |
-| `Path` | TODO: describe purpose |
-| `ArrayList` | TODO: describe purpose |
-| `Comparator` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
-| `Optional` | TODO: describe purpose |
-| `UUID` | TODO: describe purpose |
-| `AtomicLong` | TODO: describe purpose |
-| `Stream` | TODO: describe purpose |
+| [`Snapshot`](../model/Snapshot.md) | Snapshot payload written to and read from each backup file. |
+| [`SnapshotStore`](../staging/SnapshotStore.md) | Gzip/binary codec used for backup files. |
+| [`Names`](../util/Names.md) | Validates selection names and sanitizes world ids for directory paths. |
+| `IOException` | Caught and wrapped in `BackupException`. |
+| `Files` | Creates directories, lists files and deletes pruned backups. |
+| `Path` | Represents backup directories and files. |
+| `ArrayList` | Mutable copies of directory listings for inspection and pruning. |
+| `Comparator` | Sorts backup file names so the last entry is newest. |
+| `List` | Return type of `list` and the pruning work list. |
+| `Optional` | Represents the no-backup-exists case. |
+| `UUID` | Owner key in the directory layout. |
+| `AtomicLong` | Generates a monotonic suffix for same-millisecond backups. |
+| `Stream` | Lists directory entries in try-with-resources. |
 
 ---
 
@@ -93,10 +93,10 @@ private final SnapshotStore store;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `SEQUENCE` | `AtomicLong` | TODO: describe |
-| `root` | `Path` | TODO: describe |
-| `maxBackups` | `int` | TODO: describe |
-| `store` | [`SnapshotStore`](../staging/SnapshotStore.md) | TODO: describe |
+| `SEQUENCE` | `AtomicLong` | Static monotonic counter shared by all instances so names sort consistently. |
+| `root` | `Path` | Absolute normalized backup root. |
+| `maxBackups` | `int` | Per-selection retention cap, minimum 1. |
+| `store` | [`SnapshotStore`](../staging/SnapshotStore.md) | Stateless codec instance used for every write and read. |
 
 ---
 
@@ -106,7 +106,7 @@ private final SnapshotStore store;
 public BackupService(Path root, int maxBackups)
 ```
 
-TODO: Provide detailed design explanation for `BackupService`.
+Normalizes `root` to an absolute path and stores it; `maxBackups` is clamped with `Math.max(1, maxBackups)` so retention never deletes the backup just written. No filesystem access occurs in the constructor.
 
 ---
 
@@ -116,7 +116,7 @@ TODO: Provide detailed design explanation for `BackupService`.
 public Path store(String world, UUID owner, String selection, Snapshot snapshot)
 ```
 
-TODO: Provide detailed design explanation for `store`.
+`store` derives and creates the directory, then names the file `System.currentTimeMillis() + "-" + SEQUENCE.incrementAndGet() + ".snap"`, which keeps names lexicographically increasing even for backups created in the same millisecond. It writes through `SnapshotStore.write` (gzip, temp file then atomic move), prunes the directory, and wraps any `IOException` as `BackupException`.
 
 ---
 
@@ -126,7 +126,7 @@ TODO: Provide detailed design explanation for `store`.
 public Optional<Backup> latest(String world, UUID owner, String selection)
 ```
 
-TODO: Provide detailed design explanation for `latest`.
+`latest` delegates to `list`, returns `Optional.empty()` for an empty list, and otherwise reads the last path (the greatest file name) with `SnapshotStore.read`; it relies on the timestamp-sequence naming rather than file modification times.
 
 ---
 
@@ -136,7 +136,7 @@ TODO: Provide detailed design explanation for `latest`.
 public List<Path> list(String world, UUID owner, String selection)
 ```
 
-TODO: Provide detailed design explanation for `list`.
+`list` resolves the directory, returns `List.of()` when it is absent, otherwise streams the directory, keeps `.snap` files and sorts them by file name so callers get deterministic oldest-to-newest order; an `IOException` becomes a `BackupException`.
 
 ---
 
@@ -146,7 +146,7 @@ TODO: Provide detailed design explanation for `list`.
 public Path directory(String world, UUID owner, String selection)
 ```
 
-TODO: Provide detailed design explanation for `directory`.
+`directory` composes `<root>/<Names.safeWorldName(world)>/<owner or "console">/<validated selection>` and returns it without creating it; a null owner maps to the literal `console` for non-player callers. `requireName` runs first, so an invalid selection name fails before a path is built.
 
 ---
 
@@ -156,7 +156,7 @@ TODO: Provide detailed design explanation for `directory`.
 private void prune(Path directory)
 ```
 
-TODO: Provide detailed design explanation for `prune`.
+`prune` re-lists `.snap` files sorted by name and deletes from the front (oldest) while more than `maxBackups` remain; because it runs inside `store` after the new file is durable, the directory never retains more than the cap.
 
 ---
 
@@ -166,7 +166,7 @@ TODO: Provide detailed design explanation for `prune`.
 private static String requireName(String selection)
 ```
 
-TODO: Provide detailed design explanation for `requireName`.
+Wraps `Names.requireSelectionName`, translating its `IllegalArgumentException` (bad length or characters) into a `BackupException` so path-building code has a single failure type.
 
 ---
 
@@ -176,6 +176,6 @@ TODO: Provide detailed design explanation for `requireName`.
 public record Backup(Snapshot snapshot, Path file)
 ```
 
-TODO: Provide detailed design explanation for `Backup`.
+`Backup` is a nested record pairing the decoded `Snapshot` with the `.snap` file that produced it; it is the value returned by `latest` and consumed by `/git pull --abort`.
 
 ---

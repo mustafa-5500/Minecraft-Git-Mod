@@ -1,0 +1,76 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontSize 11
+}
+skinparam ArrowFontSize 10
+hide stereotype
+left to right direction
+
+title L5 - Function data flow: /git add and /git commit (main data path)
+
+package "Capture and stage (/git add)" {
+  rectangle "StagingCommands.add()" as add
+  rectangle "WorldAccess.capture()" as wacapture
+  rectangle "SnapshotService.capture()" as capture
+  rectangle "BlockStateCodec.encode()\nBlockEntityCodec.encode()\nEntityCodec.encode()" as codecs
+  rectangle "CaptureResult\n(Snapshot + skips/warnings)" as result
+  rectangle "StagingService.stage()" as stage
+  rectangle "SnapshotStore.write()" as store
+  rectangle "SelectionService.setTracked()" as tracked
+}
+
+package "Commit (/git commit)" {
+  rectangle "CommitCommands.commit()" as ccommit
+  rectangle "SelectionService.list()\nStagingService.hasStaged()" as discover
+  rectangle "CommitService.commit()" as commit
+  rectangle "StagingService.load()" as load
+  rectangle "QuadrantCsvReader.readSelection()\nCommitMeta.read()" as oldtree
+  rectangle "BuildDiff.between()" as diff
+  rectangle "QuadrantCsvWriter.writeSelection()\nCommitMeta.write()" as newtree
+  rectangle "RepoService.commitWorkspace()" as workspace
+  rectangle "CommitResult" as cresult
+}
+
+add --> wacapture : "Selection"
+wacapture --> capture : "Selection, Level\n(+loadChunks)"
+capture --> codecs : "BlockState, BlockEntity,\nEntity"
+codecs --> result : "blockData, nbt payloads"
+capture --> result : "Snapshot\n(relative coords)"
+result --> stage : "Snapshot"
+stage --> store : "Path file, Snapshot"
+store --> stage : "durable .snap"
+stage --> tracked : "StagedSelection"
+tracked --> ccommit : "tracked selection"
+
+ccommit --> discover : "worldId, owner"
+discover --> commit : "CommitRequest\n(staged selections)"
+commit --> load : "worldId, owner, name"
+load --> commit : "StagedSelection\n(Snapshot)"
+commit --> oldtree : "old dir + meta.json"
+oldtree --> commit : "old HEAD Snapshot"
+commit --> diff : "old vs staged"
+diff --> commit : "counts"
+commit --> newtree : "temp dir"
+newtree --> commit : "CSV + meta.json bytes"
+commit --> workspace : "Map<String,byte[]> files,\ndirs to replace, message"
+workspace --> commit : "commitId"
+commit --> cresult : "ids, names, counts"
+
+note right of capture
+  Runs on the owning thread:
+  client thread (multiplayer) or
+  integrated-server thread (single-player).
+end note
+
+note bottom of workspace
+  Deletes replaced selection dirs,
+  writes the new tree, stages
+  add + add --update, commits.
+end note
+
+@enduml

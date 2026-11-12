@@ -25,14 +25,14 @@
 
 ## Usage
 
-TODO: Describe how `StagingService` is instantiated and used.
+`StagingService` is a long-lived collaborator created once at mod startup with the mod's staging root and shared by the add/rm, commit and status command paths; command handlers call `stage` after a capture and `load`, `hasStaged` or `stagedNames` before commit and status. It owns only the local staging area and never reads or writes Git objects, so staged data survives restarts and is deliberately not part of the repository.
 
 ---
 
 ## 1. Overview
 
-Durable staging area. {@code /git add} writes a captured snapshot here;
-{@code /git commit} reads it later. Files survive restarts and are keyed by
+Durable staging area. `/git add` writes a captured snapshot here;
+`/git commit` reads it later. Files survive restarts and are keyed by
 world id + player + selection, never by repository.
 
 ---
@@ -63,21 +63,21 @@ import java.util.stream.Stream;
 
 | Import | Purpose |
 |--------|---------|
-| [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe purpose |
-| [`BlockPos`](../model/BlockPos.md) | TODO: describe purpose |
-| [`Selection`](../model/Selection.md) | TODO: describe purpose |
-| [`Snapshot`](../model/Snapshot.md) | TODO: describe purpose |
-| [`Names`](../util/Names.md) | TODO: describe purpose |
-| `IOException` | TODO: describe purpose |
-| `Files` | TODO: describe purpose |
-| `Path` | TODO: describe purpose |
-| `FileTime` | TODO: describe purpose |
-| `Instant` | TODO: describe purpose |
-| `ArrayList` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
-| `Optional` | TODO: describe purpose |
-| `UUID` | TODO: describe purpose |
-| `Stream` | TODO: describe purpose |
+| [`DebugLogger`](../debug/DebugLogger.md) | Records staging, rebase, restrict and removal events for diagnostics. |
+| [`BlockPos`](../model/BlockPos.md) | Carries the new origin for `rebaseStaged` and compares snapshot origins. |
+| [`Selection`](../model/Selection.md) | Provides the name, world, owner, origin and cuboids used to validate and trim captures. |
+| [`Snapshot`](../model/Snapshot.md) | The payload read from and written to staging files. |
+| [`Names`](../util/Names.md) | Validates selection names and sanitizes world ids before building paths. |
+| `IOException` | Caught and wrapped as `StagingException` around filesystem operations. |
+| `Files` | Checks existence, reads timestamps, lists directories and deletes staged files. |
+| `Path` | Represents the staging root and resolved snapshot files. |
+| `FileTime` | Reads the staged file's last-modified time for `load`. |
+| `Instant` | Records the staging time and provides the fallback `stagedAt`. |
+| `ArrayList` | Collects selection names in `stagedNames`. |
+| `List` | Returns staged names, including the empty-list case. |
+| `Optional` | Represents an absent staged snapshot in `load`. |
+| `UUID` | Identifies the owning player in the path layout. |
+| `Stream` | Enumerates the staging directory in `stagedNames`. |
 
 ---
 
@@ -87,6 +87,7 @@ import java.util.stream.Stream;
 public final class StagingService {
 ```
 
+The class is final and keeps only the normalized root, the shared store and the logger; durability is delegated entirely to `SnapshotStore`, and there is no per-request mutable state.
 
 ---
 
@@ -100,9 +101,9 @@ private final DebugLogger debug;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `root` | `Path` | TODO: describe |
-| `store` | [`SnapshotStore`](SnapshotStore.md) | TODO: describe |
-| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe |
+| `root` | `Path` | Normalized absolute root of the staging tree; immutable after construction. |
+| `store` | [`SnapshotStore`](SnapshotStore.md) | Serializer for `.snap` files, shared with the rest of the mod. |
+| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | Diagnostic logger. |
 
 ---
 
@@ -112,7 +113,7 @@ private final DebugLogger debug;
 public StagingService(Path root, SnapshotStore store, DebugLogger debug)
 ```
 
-TODO: Provide detailed design explanation for `StagingService`.
+Normalizes `root` with `toAbsolutePath().normalize()` and stores the injected `SnapshotStore` and `DebugLogger`; the constructor performs no I/O, so the staging tree is created lazily by `SnapshotStore.write`. This makes the service cheap to construct and safe to create before a world is loaded.
 
 ---
 
@@ -122,7 +123,7 @@ TODO: Provide detailed design explanation for `StagingService`.
 public Path root()
 ```
 
-TODO: Provide detailed design explanation for `root`.
+Exposes the normalized root for diagnostics and for callers that need to place related local data beside the staging tree; it returns the stored instance directly, so callers cannot change the path.
 
 ---
 
@@ -132,7 +133,7 @@ TODO: Provide detailed design explanation for `root`.
 public Path file(String worldId, UUID owner, String selection)
 ```
 
-TODO: Provide detailed design explanation for `file`.
+Validates the selection with `Names.requireSelectionName` (converting `IllegalArgumentException` into a user-facing `StagingException`), sanitizes the world id, and resolves `root/world/owner/name.snap`. The owner is the full UUID string, so different players and worlds never collide, and the repository is deliberately absent from the key. The method is pure path arithmetic and does not create directories.
 
 ---
 
@@ -142,7 +143,7 @@ TODO: Provide detailed design explanation for `file`.
 public StagedSelection stage(Selection selection, Snapshot snapshot)
 ```
 
-Write a capture to disk and return the staged handle once it is durable.
+Rejects a selection without an origin or owner, resolves the target with `file`, rebases the capture onto the selection origin when it differs, and writes it through `SnapshotStore.write`; the returned `StagedSelection` is stamped `Instant.now()` only after the atomic write succeeds. The selection's tracked flag and cuboids are not modified here, so `stage` is safe to call repeatedly.
 
 ---
 
@@ -152,7 +153,7 @@ Write a capture to disk and return the staged handle once it is durable.
 public Optional<StagedSelection> load(String worldId, UUID owner, String selection)
 ```
 
-TODO: Provide detailed design explanation for `load`.
+If the resolved path is not a regular file, returns `Optional.empty()`; otherwise it reads through `SnapshotStore.read` and uses `Files.getLastModifiedTime` as `stagedAt`, falling back to `Instant.now()` if the attribute read fails. The returned `StagedSelection` retains the resolved `Path` so callers can report or delete the exact file.
 
 ---
 
@@ -162,7 +163,7 @@ TODO: Provide detailed design explanation for `load`.
 public boolean hasStaged(String worldId, UUID owner, String selection)
 ```
 
-TODO: Provide detailed design explanation for `hasStaged`.
+Pure existence check on `file(...)`; it does not validate that the file is decodable, so a corrupt `.snap` still reports as present until `load` fails.
 
 ---
 
@@ -172,7 +173,7 @@ TODO: Provide detailed design explanation for `hasStaged`.
 public List<String> stagedNames(String worldId, UUID owner)
 ```
 
-TODO: Provide detailed design explanation for `stagedNames`.
+Resolves the world/player directory directly (without requiring a selection name), returns `List.of()` if it is absent, and otherwise lists directory entries whose names end in `.snap`, strips the suffix, sorts and returns them. Only the immediate directory is scanned, so orphaned `.tmp` files are ignored; an `IOException` becomes a `StagingException`.
 
 ---
 
@@ -182,7 +183,7 @@ TODO: Provide detailed design explanation for `stagedNames`.
 public void unstage(String worldId, UUID owner, String selection)
 ```
 
-TODO: Provide detailed design explanation for `unstage`.
+Resolves the file and calls `Files.deleteIfExists`, logging the path even when nothing was deleted; this is the user-facing removal used when a selection is dropped. I/O errors become `StagingException` with the path in the message.
 
 ---
 
@@ -192,7 +193,7 @@ TODO: Provide detailed design explanation for `unstage`.
 public void rebaseStaged(String worldId, UUID owner, String selection, BlockPos newOrigin)
 ```
 
-Rebase a staged snapshot after {@code /git selection reorigin}.
+If no staged file exists it returns silently; otherwise it reads the snapshot, calls `snapshot.rebase(newOrigin)` and writes the result back through the atomic store. Only relative coordinates change — absolute block and entity positions are preserved — and the rewrite is a no-op for a missing file, so a re-origin can be applied before or after staging.
 
 ---
 
@@ -202,9 +203,7 @@ Rebase a staged snapshot after {@code /git selection reorigin}.
 public void restrictStaged(String worldId, UUID owner, Selection selection)
 ```
 
-Trim a staged snapshot after a cuboid is removed: coordinates outside the
-remaining cuboids are untracked and must disappear from the next commit.
-The origin itself does not move here (E2/E6).
+Used after a cuboid is removed: it reads the staged snapshot, keeps only blocks and entities whose absolute position is inside the selection's remaining cuboids (`snapshot.retain`), rebases the survivors onto the unchanged selection origin, and writes the trimmed snapshot back. It is a no-op when no staged file exists or the selection has no origin, and the origin never moves here (E2/E6), matching the selection model's rule that only an explicit re-origin changes it.
 
 ---
 
@@ -214,7 +213,7 @@ The origin itself does not move here (E2/E6).
 public void deleteAll(String worldId, UUID owner, String selection)
 ```
 
-TODO: Provide detailed design explanation for `deleteAll`.
+Delegates to the same `Files.deleteIfExists` removal as `unstage` but performs no logging; it is kept for callers that clean up without wanting a debug entry. A missing file is still success, and I/O failures are wrapped in `StagingException`.
 
 ---
 
@@ -224,6 +223,6 @@ TODO: Provide detailed design explanation for `deleteAll`.
 public SnapshotStore store()
 ```
 
-TODO: Provide detailed design explanation for `store`.
+Returns the injected store directly so callers can reuse the same serializer for other staging-like files; no lookup or I/O is performed.
 
 ---

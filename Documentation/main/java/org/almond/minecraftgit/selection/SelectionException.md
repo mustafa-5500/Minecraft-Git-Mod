@@ -11,7 +11,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `SelectionException`.
+Thrown by `SelectionService` and snapshot/wand code when the player can correct the problem, such as an unknown name, a duplicate, an invalid index or an exceeded cap; commands catch it and print its message directly. For example, `services.selections().get(worldId, owner, name)` throws `SelectionException` with `No selection named '...'.` when the name is unknown.
 
 A selection or wand operation the user can correct.
 
@@ -25,12 +25,12 @@ public SelectionException(String message)
 ```
 
 ### Description
-TODO: Describe what `SelectionException` does.
+Creates a user-facing selection failure carrying the exact chat message to show; the class adds no fields or behaviour of its own.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | Human-readable explanation shown verbatim in chat. |
 
 ### Returns
 `SelectionException` instance.

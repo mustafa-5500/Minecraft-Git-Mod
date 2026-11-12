@@ -13,7 +13,7 @@
 
 ## Usage
 
-TODO: Describe how `SelectionException` is instantiated and used.
+Constructed at the point of failure in `SelectionService`, `SnapshotService` and wand handling, then caught by command handling, which prints `getMessage()` instead of logging a stack trace.
 
 ---
 
@@ -35,7 +35,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 
 | Import | Purpose |
 |--------|---------|
-| [`UserFacingException`](../util/UserFacingException.md) | TODO: describe purpose |
+| [`UserFacingException`](../util/UserFacingException.md) | Provides the user-facing marker base class plus the message-only constructor this exception uses. |
 
 ---
 
@@ -45,7 +45,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 public final class SelectionException extends UserFacingException {
 ```
 
-- **`extends UserFacingException`** — TODO: explain inheritance.
+Marks the failure as safe to display; `CommandSupport.handleError` checks for `UserFacingException` and sends its message without logging a stack trace.
 
 ---
 
@@ -55,6 +55,6 @@ public final class SelectionException extends UserFacingException {
 public SelectionException(String message)
 ```
 
-TODO: Provide detailed design explanation for `SelectionException`.
+Only forwards to `super(message)`, so every selection error is a user-facing runtime exception with a precise, actionable message; the `final` modifier prevents accidental subclass growth.
 
 ---

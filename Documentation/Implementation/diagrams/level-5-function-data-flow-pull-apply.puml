@@ -1,0 +1,64 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontSize 11
+}
+skinparam ArrowFontSize 10
+hide stereotype
+left to right direction
+
+title L5 - Function data flow: /git pull apply and fast-forward
+
+package "Command and selection" {
+  rectangle "PullCommands.applyNext()" as applynext
+  rectangle "PullCommands.ensureSelection()" as ensure
+  rectangle "SelectionService.createAt()\nget() / addCuboid() / setTracked()" as selection
+}
+
+package "Plan" {
+  rectangle "ApplyPlan.between()" as between
+  rectangle "ApplyPlan\n(placements, removals,\nentity changes)" as applyplan
+}
+
+package "Apply (integrated server)" {
+  rectangle "ApplyService.apply()" as apply
+  rectangle "SnapshotService.capturePositions()" as cappos
+  rectangle "BackupService.store()" as bstore
+  rectangle "BlockStateCodec.decode()" as bsdecode
+  rectangle "BlockEntityCodec.apply()\nEntityCodec.apply()" as entitycodec
+  rectangle "ApplyResult\n(counts, backup, warnings)" as result
+}
+
+rectangle "RepoService.fastForward()" as ff
+
+applynext --> ensure : "PreparedPull\n(local selection/origin)"
+ensure --> selection : "worldId, owner, name,\nlocalOrigin, cuboids"
+selection --> applynext : "Selection"
+applynext --> between : "selection, localHead,\nlocalOrigin, target,\nlocalOrigin, true"
+between --> applyplan : "relative -> absolute"
+applyplan --> apply : "world, plan"
+apply --> cappos : "level, name, origin,\nallPositions(), true"
+cappos --> apply : "backup Snapshot\n(blocks + block entities)"
+apply --> bstore : "worldId, owner, name,\nbackup Snapshot"
+bstore --> apply : "Path backupFile"
+apply --> bsdecode : "blockData string"
+bsdecode --> apply : "BlockState"
+apply --> entitycodec : "BlockEntity + payload;\nEntitySnapshot + x/y/z"
+entitycodec --> apply : "entity / applied flag"
+apply --> result : "placed, removed,\nskipped, entities"
+result --> ff : "only after every selection applied"
+ff --> applynext : "boolean moved"
+
+note bottom of apply
+  Single-player only. Runs on the
+  integrated-server thread; writes at
+  most config.blocksPerTick per tick.
+  The branch is moved last, so a failed
+  world write never advances HEAD.
+end note
+
+@enduml

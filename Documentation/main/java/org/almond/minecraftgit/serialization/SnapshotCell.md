@@ -15,17 +15,17 @@
 
 ## Usage
 
-TODO: Add usage examples for `SnapshotCell`.
+`SnapshotCell.encode` and `decode` convert between a block's data string and the single CSV cell that stores it; `QuadrantCsvWriter` calls `encode` while filling a grid row and `QuadrantCsvReader` calls `decode` on each non-empty cell. For example, `SnapshotCell.encode("minecraft:chest[facing=north]", payload)` returns `minecraft:chest[facing=north]|nbt|<base64>` when `payload` is the `nbt:`-prefixed SNBT produced by `BlockEntityCodec`.
 
 A CSV cell is either empty (coordinate not tracked), a block data string
-alone, or block data followed by {@code |nbt|} and Base64-encoded block-entity
+alone, or block data followed by `|nbt|` and Base64-encoded block-entity
 JSON. Base64 keeps commas, quotes, and newlines out of the CSV layer.
 
 ---
 
 ## Fields
 
-- `ENTITY_SEPARATOR` (`String`) — TODO: describe field
+- `ENTITY_SEPARATOR` (`String`) — Literal `|nbt|` inserted between the block-state string and the Base64 block-entity payload; its presence marks a cell as carrying NBT.
 
 ---
 
@@ -37,7 +37,7 @@ private SnapshotCell()
 ```
 
 ### Description
-TODO: Describe what `SnapshotCell` does.
+Private and empty: both operations are static, so no `SnapshotCell` instance is ever needed.
 
 ### Parameters
 None.
@@ -55,16 +55,16 @@ public static String encode(String blockData, String blockEntityJson)
 ```
 
 ### Description
-TODO: Describe what `encode` does.
+Returns `blockData` unchanged when the payload is `null` or blank, since an empty block entity means there is nothing to store; otherwise it concatenates `blockData`, `|nbt|` and the standard Base64 encoding of the payload's UTF-8 bytes. `blockData` itself is not validated and may be empty.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `blockData` | `String` | TODO: describe |
-| `blockEntityJson` | `String` | TODO: describe |
+| `blockData` | `String` | Block-state string as produced by `BlockStateCodec.encode`, or empty. |
+| `blockEntityJson` | `String` | Block-entity payload — native SNBT with an `nbt:` prefix, or a legacy plugin JSON document; `null`/blank means no payload. |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — The cell text: the block data alone, or block data plus `|nbt|` and Base64; never `null`.
 
 ---
 
@@ -76,15 +76,15 @@ public static Cell decode(String token)
 ```
 
 ### Description
-TODO: Describe what `decode` does.
+Finds the first `|nbt|`; without one the whole token is block data and the payload is `null`. With one, the text before it is the block data, the remainder is Base64-decoded as UTF-8, and a blank result is normalised to `null`. A decoder failure is rethrown as `SerializationException` with the message `Invalid block-entity payload in CSV cell.`
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `token` | `String` | TODO: describe |
+| `token` | `String` | Non-empty cell text from a quadrant CSV row. |
 
 ### Returns
-`Cell` — TODO: describe return value.
+`Cell` — The block-state string and the optional block-entity payload.
 
 ---
 
@@ -96,16 +96,16 @@ public record Cell(String blockData, String blockEntity)
 ```
 
 ### Description
-TODO: Describe what `Cell` does.
+Value type returned by `decode`; it keeps the two parts of a cell separate so callers can still apply the block state when the payload is unsupported, for example a plugin JSON document. The record performs no validation: `blockEntity` is `null` when the cell had no `|nbt|` part.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `blockData` | `String` | TODO: describe |
-| `blockEntity` | `String` | TODO: describe |
+| `blockData` | `String` | Block-state string for the block itself. |
+| `blockEntity` | `String` | Decoded SNBT or legacy JSON payload, or `null` when absent. |
 
 ### Returns
-`record` — TODO: describe return value.
+`record` — A `Cell` instance exposing `blockData()` and `blockEntity()`.
 
 ---
 

@@ -14,7 +14,7 @@
 
 ## Usage
 
-TODO: Describe how `SerializationException` is instantiated and used.
+`SerializationException` is thrown by the readers and writers in this package and caught once near the command boundary, where `getMessage()` is reported to the player. Because it is unchecked, helpers such as the regex readers can throw it without widening their signatures, and lambdas used with the file streams do not need checked-exception plumbing; callers that cannot recover simply let it propagate.
 
 ---
 
@@ -38,7 +38,7 @@ package org.almond.minecraftgit.serialization;
 public final class SerializationException extends RuntimeException {
 ```
 
-- **`extends RuntimeException`** — TODO: explain inheritance.
+- **`extends RuntimeException`** — Unchecked, so it can cross stream/lambda boundaries without checked declarations; `final`, so it cannot be subclassed and callers can treat it as the complete error type of the serialization package.
 
 ---
 
@@ -48,7 +48,7 @@ public final class SerializationException extends RuntimeException {
 public SerializationException(String message)
 ```
 
-TODO: Provide detailed design explanation for `SerializationException`.
+Delegates to `RuntimeException(String)`, storing only the message. Used when the failure is self-describing and no lower-level exception exists — an unknown quadrant code, an empty or unrecognised header, or a mismatched origin.
 
 ---
 
@@ -58,6 +58,6 @@ TODO: Provide detailed design explanation for `SerializationException`.
 public SerializationException(String message, Throwable cause)
 ```
 
-TODO: Provide detailed design explanation for `SerializationException`.
+Delegates to `RuntimeException(String, Throwable)`, preserving the original `IOException`, `NumberFormatException`, `IllegalArgumentException` or `CommandSyntaxException` as the cause. The message stays user-facing while the cause keeps the technical detail available in logs and crash reports.
 
 ---

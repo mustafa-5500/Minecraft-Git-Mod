@@ -61,24 +61,31 @@
 
 ## Usage
 
-TODO: Add usage examples for `RepoService`.
+`RepoService` is reached through [`RepoManager`](RepoManager.md): `RepoManager.service(worldId)` caches one instance per world id, so every command touching that world shares the same JGit handles. All methods are blocking file or network I/O protected by an internal lock, which is why commands call them on the async executor and apply results on the client thread. Failures are thrown as [`RepoException`](RepoException.md) with one actionable sentence.
+
+```java
+RepoService repo = repos.service("MyWorld__overworld");
+repo.init();                                   // creates .git and the bootstrap commit on first use
+String commit = repo.commitWorkspace(files, List.of("castle"), "Update castle", false);
+repo.push("origin", false);                    // what /git push origin runs
+```
 
 Facade over JGit for one repository. All public methods are serialized by a
-lock because a JGit {@link Repository} is not safe for concurrent mutation.
+lock because a JGit `Repository` is not safe for concurrent mutation.
 The world is never touched here; repository I/O is pure file/network work.
 
 ---
 
 ## Fields
 
-- `repoPath` (`Path`) — TODO: describe field
-- `options` ([`RepoOptions`](RepoOptions.md)) — TODO: describe field
-- `debug` ([`DebugLogger`](../debug/DebugLogger.md)) — TODO: describe field
-- `lock` (`ReentrantLock`) — TODO: describe field
-- `git` (`Git`) — TODO: describe field
-- `repository` (`Repository`) — TODO: describe field
-- `authorName` (`String`) — TODO: describe field
-- `authorEmail` (`String`) — TODO: describe field
+- `repoPath` (`Path`) — absolute, normalized worktree directory; every containment check in `safeResolve` is relative to it.
+- `options` ([`RepoOptions`](RepoOptions.md)) — immutable defaults captured at construction: branch name, default remote and initial author identity.
+- `debug` ([`DebugLogger`](../debug/DebugLogger.md)) — sink for `repo`-category diagnostics; its output never reaches the user directly.
+- `lock` (`ReentrantLock`) — serializes every public operation and the `*Locked` helpers called under it; reentrant, so public methods may call each other.
+- `git` (`Git`) — JGit façade, opened lazily by `ensureOpenLocked` and cleared by `close`.
+- `repository` (`Repository`) — underlying repository for config, ref and tree reads; non-null exactly while `git` is open.
+- `authorName` (`String`) — commit identity name, seeded from `RepoOptions` and mirrored into `user.name` by `configureAuthorLocked`.
+- `authorEmail` (`String`) — commit identity email, seeded from `RepoOptions` and mirrored into `user.email` by `configureAuthorLocked`.
 
 ---
 
@@ -90,14 +97,14 @@ public RepoService(Path repoPath, RepoOptions options, DebugLogger debug)
 ```
 
 ### Description
-TODO: Describe what `RepoService` does.
+Stores the repository location, options and logger without touching the filesystem or JGit; the path is made absolute and normalized so later containment checks are reliable. The author identity starts from `RepoOptions`, which already substitutes defaults for blank values.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `repoPath` | `Path` | TODO: describe |
-| `options` | [`RepoOptions`](RepoOptions.md) | TODO: describe |
-| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe |
+| `repoPath` | `Path` | Worktree directory for this world; it may not exist until `init()` creates it. |
+| `options` | [`RepoOptions`](RepoOptions.md) | Branch, default remote and initial author identity; must not be `null`. |
+| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | Logger for open/init/commit/sync diagnostics; must not be `null`. |
 
 ### Returns
 `RepoService` instance.
@@ -112,13 +119,13 @@ public Path path()
 ```
 
 ### Description
-TODO: Describe what `path` does.
+Returns the normalized directory stored at construction; it does not check that the directory exists and performs no I/O.
 
 ### Parameters
 None.
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — the absolute worktree path used as the base for all repository-relative resolution.
 
 ---
 
@@ -130,13 +137,13 @@ public boolean isInitialized()
 ```
 
 ### Description
-TODO: Describe what `isInitialized` does.
+Reports whether `<repoPath>/.git` is a directory, which is the only initialization signal this layer uses; a bare repository or a missing path counts as uninitialized. It is a cheap filesystem probe that neither opens JGit nor takes the lock.
 
 ### Parameters
 None.
 
 ### Returns
-`boolean` — TODO: describe return value.
+`boolean` — `true` when a `.git` directory exists under `path()`.
 
 ---
 
@@ -155,7 +162,7 @@ commit), otherwise open it.
 None.
 
 ### Returns
-[`RepoInfo`](RepoInfo.md) — TODO: describe return value.
+[`RepoInfo`](RepoInfo.md) — snapshot of the created or opened repository: branch, HEAD id and summary, remote name and URL, author identity, `hasCommits` and the clean flag.
 
 ---
 
@@ -185,7 +192,7 @@ private void ensureOpenLocked()
 ```
 
 ### Description
-TODO: Describe what `ensureOpenLocked` does.
+Idempotently opens the JGit handles: it returns immediately when `git` and `repository` are already set, otherwise throws `RepoException` if `.git` is missing or calls `Git.open` and re-applies the author identity to the repository config. Callers must already hold `lock`.
 
 ### Parameters
 None.
@@ -203,7 +210,7 @@ private void writeBootstrapFiles()
 ```
 
 ### Description
-TODO: Describe what `writeBootstrapFiles` does.
+Writes `README.md` (format summary pointing at `Documentation/Git-Format.md`) and `.gitattributes` (`*.csv` and `*.json` as LF text) only when they do not already exist, so user edits survive. Both files are UTF-8 and are staged into the bootstrap commit created by `init()`.
 
 ### Parameters
 None.
@@ -221,13 +228,13 @@ public RepoInfo info()
 ```
 
 ### Description
-TODO: Describe what `info` does.
+Locks, ensures the repository is open and returns a fresh `RepoInfo`; the clean flag comes from a JGit status of the working tree, so it reflects any pending selection changes.
 
 ### Parameters
 None.
 
 ### Returns
-[`RepoInfo`](RepoInfo.md) — TODO: describe return value.
+[`RepoInfo`](RepoInfo.md) — point-in-time state for `/git repo`, with an empty head id and summary before the first commit and the configured or default remote.
 
 ---
 
@@ -239,13 +246,13 @@ private RepoInfo infoLocked()
 ```
 
 ### Description
-TODO: Describe what `infoLocked` does.
+Assembles `RepoInfo` by resolving `HEAD` (id and short message), reading the current branch, taking that branch's configured remote or falling back to `options.defaultRemote()`, and reading `remote.<name>.url`. It also reports the in-memory author identity, whether any commit exists and whether `statusLocked()` is clean.
 
 ### Parameters
 None.
 
 ### Returns
-[`RepoInfo`](RepoInfo.md) — TODO: describe return value.
+[`RepoInfo`](RepoInfo.md) — populated snapshot; `hasCommits` is false and `headId` empty on an unborn branch.
 
 ---
 
@@ -263,7 +270,7 @@ Current branch name, or an empty string for a detached HEAD.
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — checked-out branch name, or an empty string when `HEAD` is detached.
 
 ---
 
@@ -275,13 +282,13 @@ private String currentBranchLocked()
 ```
 
 ### Description
-TODO: Describe what `currentBranchLocked` does.
+Reads `repository.getBranch()` and maps a detached `HEAD` (where JGit returns the commit id instead of a ref name) to an empty string. Any `IOException` becomes a `RepoException`.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — branch name, or an empty string for a detached `HEAD`.
 
 ---
 
@@ -293,13 +300,13 @@ public Optional<String> headId()
 ```
 
 ### Description
-TODO: Describe what `headId` does.
+Resolves `Constants.HEAD` to a commit id and returns its full hex form without walking history; an unborn branch yields `Optional.empty()`.
 
 ### Parameters
 None.
 
 ### Returns
-`Optional<String>` — TODO: describe return value.
+`Optional<String>` — full hex `HEAD` commit id, or empty when the branch has no commits.
 
 ---
 
@@ -316,11 +323,11 @@ Stage the whole working tree and commit it.
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
-| `allowEmpty` | `boolean` | TODO: describe |
+| `message` | `String` | Commit message; only its first line is used for debug logging. |
+| `allowEmpty` | `boolean` | When `true`, commit even if the staged tree matches `HEAD`; when `false` the call returns `null` instead. |
 
 ### Returns
-`String` — the new commit id, or {@code null} when there was nothing to commit and {@code allowEmpty} is false
+`String` — the new commit id, or `null` when there was nothing to commit and `allowEmpty` is false
 
 ---
 
@@ -337,10 +344,10 @@ Create an empty commit, useful for verifying a configured remote.
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | Message for the empty commit; its first line is logged. |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — the new commit id, or `null` if JGit produced no commit.
 
 ---
 
@@ -360,14 +367,13 @@ are rejected if they escape it.
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `` | `Map<String` | TODO: describe |
-| `files` | `byte[]>` | relative path to UTF-8 bytes |
-| `directoriesToReplace` | `Collection<String>` | directories removed before {@code files} are written |
-| `message` | `String` | TODO: describe |
-| `allowEmpty` | `boolean` | TODO: describe |
+| `files` | `Map<String, byte[]>` | Repository-relative path to UTF-8 file bytes; parent directories are created as needed. |
+| `directoriesToReplace` | `Collection<String>` | directories removed before `files` are written |
+| `message` | `String` | Commit message; only its first line is logged. |
+| `allowEmpty` | `boolean` | When `false`, an unchanged tree returns `null` instead of creating an empty commit. |
 
 ### Returns
-`String` — the commit id, or {@code null} when nothing changed and {@code allowEmpty} is false
+`String` — the commit id, or `null` when nothing changed and `allowEmpty` is false
 
 ---
 
@@ -379,15 +385,15 @@ private Path safeResolve(String relative)
 ```
 
 ### Description
-TODO: Describe what `safeResolve` does.
+Resolves the candidate against the repository root, normalizes it and rejects anything that is not a strict descendant of the root, so `../` segments and absolute paths cannot write or delete outside the repository.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `relative` | `String` | TODO: describe |
+| `relative` | `String` | Repository-relative path such as `castle/meta.json`; `..` segments and absolute paths are rejected. |
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — normalized absolute target guaranteed to be a strict descendant of `path()`.
 
 ---
 
@@ -399,12 +405,12 @@ private static void deleteRecursively(Path path)
 ```
 
 ### Description
-TODO: Describe what `deleteRecursively` does.
+Recursively deletes a file or directory tree, visiting children before parents via `Files.walk` sorted in reverse order, and treats a missing path as a no-op. It is used to wipe replaced selection directories and the export target.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `path` | `Path` | TODO: describe |
+| `path` | `Path` | Absolute path to remove; callers are responsible for having validated it first. |
 
 ### Returns
 `void`
@@ -419,7 +425,7 @@ private void stageAllLocked()
 ```
 
 ### Description
-TODO: Describe what `stageAllLocked` does.
+Stages the whole worktree in two passes: `addFilepattern(".")` for new and modified files, then `setUpdate(true)` so deletions are recorded too. Both passes run under `lock` and failures are translated by `error("stage files", ...)`.
 
 ### Parameters
 None.
@@ -437,13 +443,13 @@ private Status statusLocked()
 ```
 
 ### Description
-TODO: Describe what `statusLocked` does.
+Calls `git.status()` and returns JGit's `Status` for the worktree against the index and `HEAD`; the checked `GitAPIException` is declared so the locked caller can translate it.
 
 ### Parameters
 None.
 
 ### Returns
-`Status` — TODO: describe return value.
+`Status` — JGit status snapshot used for no-op checks and for `RepoInfo.clean`.
 
 ---
 
@@ -455,13 +461,13 @@ public Optional<CommitInfo> headCommit()
 ```
 
 ### Description
-TODO: Describe what `headCommit` does.
+Returns the newest entry of `log(1)`, i.e. the commit `HEAD` points at; an unborn branch yields `Optional.empty()`.
 
 ### Parameters
 None.
 
 ### Returns
-`Optional<CommitInfo>` — TODO: describe return value.
+`Optional<CommitInfo>` — most recent commit on the current branch, empty before the first commit.
 
 ---
 
@@ -473,15 +479,15 @@ public List<CommitInfo> log(int limit)
 ```
 
 ### Description
-TODO: Describe what `log` does.
+Walks back from `HEAD` with `git.log()` and returns at most `limit` commits, or an empty list on an unborn branch (unresolved `HEAD` or `NoHeadException`). Each row carries full and 8-character ids, author name and email (falling back to the committer, then `unknown` and `Instant.EPOCH`), timestamp and message subject.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `limit` | `int` | TODO: describe |
+| `limit` | `int` | Maximum number of commits to return; values below 1 are clamped to 1. |
 
 ### Returns
-`List<CommitInfo>` — TODO: describe return value.
+`List<CommitInfo>` — newest-first commits, empty when the branch has no commits.
 
 ---
 
@@ -493,13 +499,13 @@ public void setAuthor(String name, String email)
 ```
 
 ### Description
-TODO: Describe what `setAuthor` does.
+Validates that both values are non-blank, updates the in-memory identity and, when a repository exists, opens it if needed and saves `user.name`/`user.email` so later commits and external Git tooling agree. It does not create a repository when none is initialized.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `String` | TODO: describe |
-| `email` | `String` | TODO: describe |
+| `name` | `String` | Non-blank author name written to `user.name`. |
+| `email` | `String` | Non-blank author email written to `user.email`. |
 
 ### Returns
 `void`
@@ -514,13 +520,13 @@ public String authorName()
 ```
 
 ### Description
-TODO: Describe what `authorName` does.
+Returns the identity name used for new commits; it is set by the constructor and replaced by `setAuthor`.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — current author name.
 
 ---
 
@@ -532,13 +538,13 @@ public String authorEmail()
 ```
 
 ### Description
-TODO: Describe what `authorEmail` does.
+Returns the identity email used for new commits; it is set by the constructor and replaced by `setAuthor`.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — current author email.
 
 ---
 
@@ -550,7 +556,7 @@ private void configureAuthorLocked()
 ```
 
 ### Description
-TODO: Describe what `configureAuthorLocked` does.
+Writes `user.name` and `user.email` into the cached `StoredConfig` and saves it; called after `open`/`init` and from `setAuthor`. Requires the lock and an open repository, and turns an `IOException` into `RepoException`.
 
 ### Parameters
 None.
@@ -568,13 +574,13 @@ private PersonIdent identityLocked()
 ```
 
 ### Description
-TODO: Describe what `identityLocked` does.
+Builds a fresh `PersonIdent` from the current name and email so each commit records the configured identity with the current timestamp.
 
 ### Parameters
 None.
 
 ### Returns
-`PersonIdent` — TODO: describe return value.
+`PersonIdent` — author/committer identity passed to JGit commit calls.
 
 ---
 
@@ -586,13 +592,13 @@ public void remoteAdd(String name, String url)
 ```
 
 ### Description
-TODO: Describe what `remoteAdd` does.
+Validates the remote name, rejects a blank URL and converts it with `toUri` (so Windows drive, UNC and POSIX paths become `file:` URIs), then registers it through `git.remoteAdd`. If the new remote has no fetch refspec it adds `+refs/heads/*:refs/remotes/<name>/*`, which `planPull` relies on; an unparsable URL surfaces as `RepoException`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `String` | TODO: describe |
-| `url` | `String` | TODO: describe |
+| `name` | `String` | Remote name, 1-64 characters of letters, digits, `.`, `_` or `-`. |
+| `url` | `String` | Non-blank HTTPS/SSH URL or local path; local paths are converted to `file:` URIs. |
 
 ### Returns
 `void`
@@ -607,12 +613,12 @@ public void remoteRemove(String name)
 ```
 
 ### Description
-TODO: Describe what `remoteRemove` does.
+Validates the name and removes the remote from the repository config via `git.remoteRemove`; already-fetched remote-tracking refs are left in place.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `String` | TODO: describe |
+| `name` | `String` | Name of a configured remote, validated with the same 1-64 character rule. |
 
 ### Returns
 `void`
@@ -627,13 +633,13 @@ public List<RemoteInfo> remoteList()
 ```
 
 ### Description
-TODO: Describe what `remoteList` does.
+Lists configured remotes via `git.remoteList()`, mapping each `RemoteConfig` to a `RemoteInfo` with its first URI, or an empty string when it has none.
 
 ### Parameters
 None.
 
 ### Returns
-`List<RemoteInfo>` — TODO: describe return value.
+`List<RemoteInfo>` — configured remotes in config order, empty when none are configured.
 
 ---
 
@@ -645,15 +651,15 @@ public Optional<RemoteInfo> remote(String name)
 ```
 
 ### Description
-TODO: Describe what `remote` does.
+Filters `remoteList()` for an exact name match, so it inherits that call's locking and error translation rather than reading config itself.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `String` | TODO: describe |
+| `name` | `String` | Exact remote name to look up. |
 
 ### Returns
-`Optional<RemoteInfo>` — TODO: describe return value.
+`Optional<RemoteInfo>` — the matching remote, or empty when it is not configured.
 
 ---
 
@@ -665,15 +671,15 @@ public FetchSummary fetch(String remote)
 ```
 
 ### Description
-TODO: Describe what `fetch` does.
+Convenience overload that fetches without progress reporting by delegating to `fetch(remote, RepoProgress.NOOP)`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remote` | `String` | TODO: describe |
+| `remote` | `String` | Configured remote name to fetch from. |
 
 ### Returns
-`FetchSummary` — TODO: describe return value.
+`FetchSummary` — remote name, number of updated remote-tracking refs and JGit's transport messages.
 
 ---
 
@@ -685,16 +691,16 @@ public FetchSummary fetch(String remote, RepoProgress progress)
 ```
 
 ### Description
-TODO: Describe what `fetch` does.
+Fetches into the remote-tracking refs under the instance lock and summarises the result; the working tree, index and local branches are untouched.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remote` | `String` | TODO: describe |
-| `progress` | [`RepoProgress`](RepoProgress.md) | TODO: describe |
+| `remote` | `String` | Configured remote name; it must exist and have a URL. |
+| `progress` | [`RepoProgress`](RepoProgress.md) | Optional transport progress sink; `null` or `NOOP` disables monitoring. |
 
 ### Returns
-`FetchSummary` — TODO: describe return value.
+`FetchSummary` — updated ref count from `FetchResult.getTrackingRefUpdates()` plus server messages.
 
 ---
 
@@ -706,16 +712,16 @@ private FetchResult fetchLocked(String remote, RepoProgress progress)
 ```
 
 ### Description
-TODO: Describe what `fetchLocked` does.
+Validates the name and requires the remote to be configured, then fetches with an explicit `+refs/heads/*:refs/remotes/<remote>/*` refspec, `setRemoveDeletedRefs(true)` to prune deleted branches and a `JGitProgressMonitor` adapter. The caller holds the lock and `GitAPIException` propagates for translation.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remote` | `String` | TODO: describe |
-| `progress` | [`RepoProgress`](RepoProgress.md) | TODO: describe |
+| `remote` | `String` | Validated, configured remote name. |
+| `progress` | [`RepoProgress`](RepoProgress.md) | Requested progress sink; `NOOP` maps to JGit's null monitor. |
 
 ### Returns
-`FetchResult` — TODO: describe return value.
+`FetchResult` — JGit result whose tracking-ref updates and messages become the `FetchSummary`.
 
 ---
 
@@ -727,16 +733,16 @@ public PushSummary push(String remote, boolean force)
 ```
 
 ### Description
-TODO: Describe what `push` does.
+Convenience overload that pushes without progress reporting by delegating to `push(remote, force, RepoProgress.NOOP)`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remote` | `String` | TODO: describe |
-| `force` | `boolean` | TODO: describe |
+| `remote` | `String` | Configured remote name to push to. |
+| `force` | `boolean` | When `true`, allows overwriting a non-fast-forward remote branch. |
 
 ### Returns
-`PushSummary` — TODO: describe return value.
+`PushSummary` — remote, branch, updated ref count and whether the remote was already up to date.
 
 ---
 
@@ -748,17 +754,17 @@ public PushSummary push(String remote, boolean force, RepoProgress progress)
 ```
 
 ### Description
-TODO: Describe what `push` does.
+Pushes `refs/heads/<branch>` to the same branch on the remote under the lock, then records `branch.<branch>.remote` and `branch.<branch>.merge` so a later pull knows its upstream. Ref updates rejected as non-fast-forward, remote-changed or other reasons are collected into a `RepoException` that suggests fetching or pulling first, or using `--force`; a detached `HEAD` and a missing commit are rejected up front.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remote` | `String` | TODO: describe |
-| `force` | `boolean` | TODO: describe |
-| `progress` | [`RepoProgress`](RepoProgress.md) | TODO: describe |
+| `remote` | `String` | Configured remote name; it must exist. |
+| `force` | `boolean` | Passed to `git.push().setForce(...)`; `false` protects remote history. |
+| `progress` | [`RepoProgress`](RepoProgress.md) | Optional transport progress sink for the push. |
 
 ### Returns
-`PushSummary` — TODO: describe return value.
+`PushSummary` — `upToDate()` is true when JGit reported `UP_TO_DATE` or no ref was updated at all.
 
 ---
 
@@ -772,16 +778,16 @@ public PullPlan planPull(String remote, RepoProgress progress)
 ### Description
 Fetch and classify the relationship between the local branch and its
 remote. The caller applies the remote snapshot to the world before calling
-{@link #fastForward(PullPlan)}, so a failed world write does not move Git.
+`.fastForward(PullPlan)`, so a failed world write does not move Git.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remote` | `String` | TODO: describe |
-| `progress` | [`RepoProgress`](RepoProgress.md) | TODO: describe |
+| `remote` | `String` | Remote to fetch and compare; it must be configured. |
+| `progress` | [`RepoProgress`](RepoProgress.md) | Progress sink for the embedded fetch. |
 
 ### Returns
-[`PullPlan`](PullPlan.md) — TODO: describe return value.
+[`PullPlan`](PullPlan.md) — local and remote heads, merge base, `UP_TO_DATE`/`FAST_FORWARD`/`DIVERGED` classification and fetch count; no ref or worktree is modified.
 
 ---
 
@@ -798,10 +804,10 @@ Move the local branch to the plan's remote head after a successful apply.
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `plan` | [`PullPlan`](PullPlan.md) | TODO: describe |
+| `plan` | [`PullPlan`](PullPlan.md) | Plan returned by `planPull`; only a `FAST_FORWARD` plan is applied. |
 
 ### Returns
-`boolean` — TODO: describe return value.
+`boolean` — `true` after a hard reset to the remote head, `false` when the plan was not a fast-forward.
 
 ---
 
@@ -813,15 +819,15 @@ private boolean isPristineInitLocked(RevCommit commit)
 ```
 
 ### Description
-TODO: Describe what `isPristineInitLocked` does.
+Recognises the untouched scaffold commit produced by `init()`: its subject starts with `Initialize MinecraftGit repository` and its tree contains only `README.md` and `.gitattributes`. Such a commit is treated as an unborn branch by `planPull`, so a build can be pulled into a freshly initialized world whose history is unrelated.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `commit` | `RevCommit` | TODO: describe |
+| `commit` | `RevCommit` | Commit to test, already parsed from this repository. |
 
 ### Returns
-`boolean` — TODO: describe return value.
+`boolean` — `true` when the commit is the bootstrap commit with no build data.
 
 ---
 
@@ -833,13 +839,13 @@ public Optional<ObjectId> headObject()
 ```
 
 ### Description
-TODO: Describe what `headObject` does.
+Resolves `HEAD` and returns the raw `ObjectId`, which callers pass to tree-reading methods such as `listSelectionsAt` and `exportSelectionAt`.
 
 ### Parameters
 None.
 
 ### Returns
-`Optional<ObjectId>` — TODO: describe return value.
+`Optional<ObjectId>` — the `HEAD` object id, empty on an unborn branch.
 
 ---
 
@@ -851,15 +857,15 @@ public Optional<ObjectId> resolve(String revision)
 ```
 
 ### Description
-TODO: Describe what `resolve` does.
+Resolves any JGit revision string (`HEAD~1`, a branch name, a full or abbreviated hash) against the open repository and returns empty instead of throwing when nothing matches.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `revision` | `String` | TODO: describe |
+| `revision` | `String` | JGit revision expression to resolve. |
 
 ### Returns
-`Optional<ObjectId>` — TODO: describe return value.
+`Optional<ObjectId>` — resolved object id, or empty when the revision does not exist.
 
 ---
 
@@ -876,10 +882,10 @@ Selection names that exist in a commit's tree.
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `commitId` | `ObjectId` | TODO: describe |
+| `commitId` | `ObjectId` | Commit whose tree is scanned for selection directories. |
 
 ### Returns
-`Set<String>` — TODO: describe return value.
+`Set<String>` — distinct top-level names that pass `Names.isValidSelectionName`, in tree order.
 
 ---
 
@@ -891,15 +897,15 @@ private Set<String> listSelectionsAtLocked(ObjectId commitId)
 ```
 
 ### Description
-TODO: Describe what `listSelectionsAtLocked` does.
+Parses the commit and walks its tree recursively, taking the first path segment of every entry and keeping names accepted by `Names.isValidSelectionName` in a `LinkedHashSet`. That filter keeps repository files such as `README.md` out of the selection list.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `commitId` | `ObjectId` | TODO: describe |
+| `commitId` | `ObjectId` | Commit to inspect; it must exist in this repository. |
 
 ### Returns
-`Set<String>` — TODO: describe return value.
+`Set<String>` — valid selection directory names, deduplicated, in traversal order.
 
 ---
 
@@ -911,18 +917,18 @@ public boolean exportSelectionAt(ObjectId commitId, String selection, Path targe
 ```
 
 ### Description
-Write one selection's files from a commit into {@code target}. Used by pull
+Write one selection's files from a commit into `target`. Used by pull
 and checkout to apply a snapshot without disturbing the repository worktree.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `commitId` | `ObjectId` | TODO: describe |
-| `selection` | `String` | TODO: describe |
-| `target` | `Path` | TODO: describe |
+| `commitId` | `ObjectId` | Commit holding the snapshot to export. |
+| `selection` | `String` | Selection name, validated with `Names.requireSelectionName` so it cannot escape the target. |
+| `target` | `Path` | Directory that is deleted and recreated before the files are written. |
 
 ### Returns
-`boolean` — TODO: describe return value.
+`boolean` — `true` when at least one file was exported, `false` when the commit has no files for that selection.
 
 ---
 
@@ -934,12 +940,12 @@ private void requireRemoteLocked(String name)
 ```
 
 ### Description
-TODO: Describe what `requireRemoteLocked` does.
+Looks up `remote.<name>.url` and throws a `RepoException` naming `/git remote add <name> <url>` when the remote is absent or has a blank URL; it runs before any fetch or push touches the network.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `String` | TODO: describe |
+| `name` | `String` | Remote name already validated by `requireValidRemoteName`. |
 
 ### Returns
 `void`
@@ -954,12 +960,12 @@ private static void requireValidRemoteName(String name)
 ```
 
 ### Description
-TODO: Describe what `requireValidRemoteName` does.
+Enforces the remote name grammar `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}` so a name is safe both as a config subsection and as a refspec component; violations throw `RepoException`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `String` | TODO: describe |
+| `name` | `String` | Candidate remote name; `null` is rejected. |
 
 ### Returns
 `void`
@@ -974,15 +980,15 @@ private static URIish toUri(String url)
 ```
 
 ### Description
-TODO: Describe what `toUri` does.
+Builds the `URIish` used by `git.remoteAdd`, converting local paths (Windows drive letters, UNC shares, `/...`, `./...`, `../...`) through `File.toURI()` so JGit does not mistake a drive-letter path for a one-letter URI scheme. Any other value is parsed as a URL, and `URISyntaxException` is translated by the caller.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `url` | `String` | TODO: describe |
+| `url` | `String` | Remote URL or local filesystem path supplied to `/git remote add`. |
 
 ### Returns
-`URIish` — TODO: describe return value.
+`URIish` — parsed remote location ready for JGit.
 
 ---
 
@@ -994,16 +1000,16 @@ private RepoException error(String action, Exception cause)
 ```
 
 ### Description
-TODO: Describe what `error` does.
+Central translation point: logs the full cause at `repo` level and returns a `RepoException` whose message is `Could not <action>: <friendly reason>`. The original exception is kept as the cause, so the actionable one-liner is what commands display while the JGit detail stays in the game log.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `action` | `String` | TODO: describe |
-| `cause` | `Exception` | TODO: describe |
+| `action` | `String` | Lower-case verb phrase such as `push to origin`, describing what failed. |
+| `cause` | `Exception` | Underlying `IOException`, `GitAPIException` or transport failure. |
 
 ### Returns
-[`RepoException`](RepoException.md) — TODO: describe return value.
+[`RepoException`](RepoException.md) — user-facing exception wrapping `cause`; call sites throw it.
 
 ---
 
@@ -1015,15 +1021,15 @@ private static String friendlyMessage(Exception cause)
 ```
 
 ### Description
-TODO: Describe what `friendlyMessage` does.
+Maps common transport failures to short actionable sentences: authentication, 401 and 403 to a credentials hint; unknown host, connection refused, timed out and unreachable network to a connectivity hint; not found to a missing-repository message. Everything else, including a `null` message, falls back to the raw message or the exception's simple class name.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `cause` | `Exception` | TODO: describe |
+| `cause` | `Exception` | Failure to summarise. |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — short reason suitable for command output.
 
 ---
 
@@ -1035,15 +1041,15 @@ private static String firstLine(String message)
 ```
 
 ### Description
-TODO: Describe what `firstLine` does.
+Returns the commit subject: the text before the first newline, trimmed, or an empty string for `null`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | Full commit message, possibly multi-line or `null`. |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — first line without surrounding whitespace.
 
 ---
 
@@ -1056,7 +1062,7 @@ public void close()
 ```
 
 ### Description
-TODO: Describe what `close` does.
+Closes the JGit `Git` handle (which also closes its `Repository`) and clears both fields under the lock; calling it twice is safe. The service stays reusable afterwards because `ensureOpenLocked` reopens on demand, and `RepoManager` relies on this when worlds reload.
 
 ### Parameters
 None.
@@ -1074,18 +1080,18 @@ public record PushSummary(String remote, String branch, int updatedRefs, boolean
 ```
 
 ### Description
-TODO: Describe what `PushSummary` does.
+Immutable result of a push, used by `/git push` to report how many refs moved and whether there was anything to send.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remote` | `String` | TODO: describe |
-| `branch` | `String` | TODO: describe |
-| `updatedRefs` | `int` | TODO: describe |
-| `upToDate` | `boolean` | TODO: describe |
+| `remote` | `String` | Remote that was pushed to. |
+| `branch` | `String` | Local branch, which is also the remote branch name. |
+| `updatedRefs` | `int` | Number of remote ref updates reported `OK`. |
+| `upToDate` | `boolean` | `true` when the remote already matched or no ref was updated. |
 
 ### Returns
-`record` — TODO: describe return value.
+`record` — immutable `PushSummary` carrying the fields above.
 
 ---
 
@@ -1097,17 +1103,17 @@ public record FetchSummary(String remote, int updatedRefs, String messages)
 ```
 
 ### Description
-TODO: Describe what `FetchSummary` does.
+Immutable result of a fetch, used by `/git fetch` to report how many remote-tracking refs changed and to surface server messages.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remote` | `String` | TODO: describe |
-| `updatedRefs` | `int` | TODO: describe |
-| `messages` | `String` | TODO: describe |
+| `remote` | `String` | Remote that was fetched. |
+| `updatedRefs` | `int` | Number of tracking refs updated by the fetch. |
+| `messages` | `String` | JGit/server message text, possibly empty or `null`. |
 
 ### Returns
-`record` — TODO: describe return value.
+`record` — immutable `FetchSummary` carrying the fields above.
 
 ---
 

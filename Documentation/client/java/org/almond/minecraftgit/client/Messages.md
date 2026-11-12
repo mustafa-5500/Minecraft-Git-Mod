@@ -19,7 +19,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `Messages`.
+Reached through `GitServices.messages()`; commands pass the Fabric client command source and a plain string, and the helper prepends the configured prefix and applies the colour. For example `services.messages().format(source, "Added %s to '%s'", cuboid.dimensions(), selection.name())` sends a grey prefixed line, while `services.messages().error(source, ...)` reports through the command error channel. Instances are created by `GitServices`, not by commands.
 
 Chat formatting shared by all client commands.
 
@@ -27,7 +27,7 @@ Chat formatting shared by all client commands.
 
 ## Fields
 
-- `config` ([`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md)) — TODO: describe field
+- `config` ([`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md)) — The loaded `ModConfig`; only `prefix` is read, on every `prefix()` call, so a prefix change takes effect on the next message.
 
 ---
 
@@ -39,12 +39,12 @@ public Messages(ModConfig config)
 ```
 
 ### Description
-TODO: Describe what `Messages` does.
+Stores the config reference only, so no component is cached and every message reflects the current `config.prefix`. `GitServices` constructs one instance and shares it with every command.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `config` | [`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | TODO: describe |
+| `config` | [`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | Loaded `ModConfig` whose `prefix` is prepended to every message. |
 
 ### Returns
 `Messages` instance.
@@ -59,13 +59,13 @@ private Component prefix()
 ```
 
 ### Description
-TODO: Describe what `prefix` does.
+Builds the prefix component from `config.prefix`, treating null as the empty string and styling it dark aqua. It is private because every public method copies the prefix before appending its own coloured body.
 
 ### Parameters
 None.
 
 ### Returns
-`Component` — TODO: describe return value.
+`Component` — a dark-aqua literal prefix (`[Git] ` by default), or an empty component when no prefix is configured.
 
 ---
 
@@ -77,13 +77,13 @@ public void send(FabricClientCommandSource source, String message)
 ```
 
 ### Description
-TODO: Describe what `send` does.
+Sends the prefix followed by a grey literal body as normal command feedback.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `message` | `String` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Client command source that decides where the feedback is displayed. |
+| `message` | `String` | Body text, sent literally without interpreting formatting codes. |
 
 ### Returns
 `void`
@@ -98,13 +98,13 @@ public void success(FabricClientCommandSource source, String message)
 ```
 
 ### Description
-TODO: Describe what `success` does.
+Same as `send` but styles the body green, used to confirm that an operation completed.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `message` | `String` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Client command source that receives the feedback. |
+| `message` | `String` | Body text, sent literally and coloured green. |
 
 ### Returns
 `void`
@@ -119,13 +119,13 @@ public void warn(FabricClientCommandSource source, String message)
 ```
 
 ### Description
-TODO: Describe what `warn` does.
+Styles the body yellow for advisory output such as the multiplayer wand fallback message.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `message` | `String` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Client command source that receives the feedback. |
+| `message` | `String` | Body text, sent literally and coloured yellow. |
 
 ### Returns
 `void`
@@ -140,13 +140,13 @@ public void error(FabricClientCommandSource source, String message)
 ```
 
 ### Description
-TODO: Describe what `error` does.
+Sends a red prefixed message through `sendError` instead of `sendFeedback`, so the client treats it as an error result.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `message` | `String` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Client command source that receives the error. |
+| `message` | `String` | Body text, sent literally and coloured red. |
 
 ### Returns
 `void`
@@ -161,13 +161,13 @@ public void raw(FabricClientCommandSource source, String message)
 ```
 
 ### Description
-TODO: Describe what `raw` does.
+Sends the body in grey without the prefix, for headers and per-row output where indentation must be preserved.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `message` | `String` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Client command source that receives the feedback. |
+| `message` | `String` | Body text, sent literally without the prefix. |
 
 ### Returns
 `void`
@@ -182,14 +182,14 @@ public void format(FabricClientCommandSource source, String format, Object... ar
 ```
 
 ### Description
-TODO: Describe what `format` does.
+Formats with `String.format(Locale.ROOT, format, args)` and forwards to `send`, so the result inherits the prefix and grey styling.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `format` | `String` | TODO: describe |
-| `args` | `Object...` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Client command source that receives the formatted feedback. |
+| `format` | `String` | `String.format` pattern using `%s`-style specifiers. |
+| `args` | `Object...` | Values substituted into the pattern. |
 
 ### Returns
 `void`

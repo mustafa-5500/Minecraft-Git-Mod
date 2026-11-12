@@ -1,0 +1,68 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontSize 11
+}
+skinparam ArrowFontSize 10
+hide stereotype
+left to right direction
+
+title L5 - Function data flow: /git pull --abort and /git checkout
+
+package "Abort" {
+  rectangle "PullCommands.abort()" as abort
+  rectangle "BackupService.latest()" as blatest
+  rectangle "SnapshotStore.read()" as bread
+  rectangle "Backup\n(snapshot, file)" as backup
+  rectangle "ApplyPlan.restore()" as restore
+}
+
+package "Checkout" {
+  rectangle "PullCommands.checkout()" as checkout
+  rectangle "RepoService.resolve()" as resolve
+  rectangle "PullService.prepareCheckout()" as prepcheckout
+  rectangle "RepoService.exportSelectionAt()" as exportat
+  rectangle "QuadrantCsvReader.readSelection()\nCommitMeta.read()" as read
+  rectangle "PreparedCheckout\n(target, meta, localHead,\ntempDir)" as prepared
+  rectangle "ApplyPlan.between()" as between
+}
+
+rectangle "ApplyService.apply()\nintegrated server, tick batches" as apply
+rectangle "ApplyResult" as result
+
+abort --> blatest : "worldId, owner, name"
+blatest --> bread : "newest .snap path"
+bread --> backup : "Snapshot"
+backup --> restore : "selection, snapshot"
+restore --> apply : "ApplyPlan\n(absolute placements)"
+apply --> result : "restored counts"
+
+checkout --> resolve : "revision string"
+resolve --> checkout : "ObjectId"
+checkout --> prepcheckout : "selection, repo, commit"
+prepcheckout --> exportat : "commit, name, tempDir"
+exportat --> prepcheckout : "tree files on disk"
+prepcheckout --> read : "temp meta.json / CSV tree"
+read --> prepcheckout : "target Snapshot,\nlocalHead Snapshot"
+prepcheckout --> prepared : "PreparedCheckout"
+prepared --> between : "localHead, selection.origin(),\ntarget, selection.origin()"
+between --> apply : "ApplyPlan at the\nselection's local origin"
+apply --> result : "placed/removed counts"
+
+note bottom of abort
+  Abort restores blocks and block
+  entities; entities are not in backups.
+  Applies itself writes a new backup first.
+end note
+
+note bottom of checkout
+  HEAD and the repository worktree are
+  not modified: only a temp export is
+  read and the world is written.
+end note
+
+@enduml

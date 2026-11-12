@@ -11,7 +11,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `PullException`.
+Throw it during pull or checkout preparation when the player can fix the problem, for example `throw new PullException("Selection '" + name + "' is not in the remote commit.");`. Command handlers catch [`UserFacingException`](../util/UserFacingException.md) and show the message in chat.
 
 A pull/checkout preparation failed in a user-correctable way.
 
@@ -25,12 +25,12 @@ public PullException(String message)
 ```
 
 ### Description
-TODO: Describe what `PullException` does.
+Creates an exception carrying a user-facing explanation of the pull/checkout failure.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | Message shown to the player; it should describe the cause and, where possible, the fix. |
 
 ### Returns
 `PullException` instance.
@@ -45,13 +45,13 @@ public PullException(String message, Throwable cause)
 ```
 
 ### Description
-TODO: Describe what `PullException` does.
+Creates an exception with a user-facing explanation and the underlying cause for diagnostics.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
-| `cause` | `Throwable` | TODO: describe |
+| `message` | `String` | Message shown to the player. |
+| `cause` | `Throwable` | Underlying I/O or export failure, retained for logs rather than shown verbatim. |
 
 ### Returns
 `PullException` instance.

@@ -18,13 +18,13 @@
 
 ## Usage
 
-TODO: Describe how `QuadrantCsvReader` is instantiated and used.
+`QuadrantCsvReader` is never instantiated; the static `readSelection` is called with the directory of one selection (`<repo>/<selection>`) and a fallback origin, and returns a `Snapshot`. The reader is the read-side counterpart of `QuadrantCsvWriter`: it walks the `y_<n>/<code>.csv` files, validates every header, and merges the declared origins before decoding cells into absolute positions.
 
 ---
 
 ## 1. Overview
 
-Reads the repository CSV format written by {@link QuadrantCsvWriter}.
+Reads the repository CSV format written by `QuadrantCsvWriter`.
 
 ---
 
@@ -55,22 +55,22 @@ import java.util.stream.Stream;
 
 | Import | Purpose |
 |--------|---------|
-| [`BlockPos`](../model/BlockPos.md) | TODO: describe purpose |
-| [`BlockSnapshot`](../model/BlockSnapshot.md) | TODO: describe purpose |
-| [`EntitySnapshot`](../model/EntitySnapshot.md) | TODO: describe purpose |
-| [`Snapshot`](../model/Snapshot.md) | TODO: describe purpose |
-| `BufferedReader` | TODO: describe purpose |
-| `IOException` | TODO: describe purpose |
-| `StandardCharsets` | TODO: describe purpose |
-| `Files` | TODO: describe purpose |
-| `Path` | TODO: describe purpose |
-| `Instant` | TODO: describe purpose |
-| `ArrayList` | TODO: describe purpose |
-| `Base64` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
-| `Matcher` | TODO: describe purpose |
-| `Pattern` | TODO: describe purpose |
-| `Stream` | TODO: describe purpose |
+| [`BlockPos`](../model/BlockPos.md) | Immutable XYZ value used for the header origin, the fallback origin and the absolute block position. |
+| [`BlockSnapshot`](../model/BlockSnapshot.md) | One decoded block: absolute position, relative offsets and the cell payload. |
+| [`EntitySnapshot`](../model/EntitySnapshot.md) | One decoded entity row, including relative offsets, rotation, type and SNBT payload. |
+| [`Snapshot`](../model/Snapshot.md) | Aggregate returned by `readSelection` and by `Snapshot.empty` for a missing directory. |
+| `BufferedReader` | Line-by-line reading of each CSV file via `Files.newBufferedReader`. |
+| `IOException` | Checked failure of the file walk or a read, wrapped into `SerializationException`. |
+| `StandardCharsets` | Forces UTF-8 for both reading files and decoding Base64 entity payloads. |
+| `Files` | Detects directories and regular files, walks the tree and opens readers. |
+| `Path` | Represents the selection directory and each CSV file. |
+| `Instant` | Supplies the capture timestamp stored on the returned snapshot. |
+| `ArrayList` | Accumulates blocks and entities while files are read. |
+| `Base64` | Decodes the entity payload column; also turns decoder failures into `SerializationException`. |
+| `List` | Holds blocks/entities and the parsed cells of one row. |
+| `Matcher` | Applies the compiled header patterns and extracts their capture groups. |
+| `Pattern` | Precompiles the block and entity header grammars once at class load. |
+| `Stream` | Implements the depth-limited `Files.walk` used to find every CSV file. |
 
 ---
 
@@ -92,8 +92,8 @@ private static final Pattern ENTITY_HEADER;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `BLOCK_HEADER` | `Pattern` | TODO: describe |
-| `ENTITY_HEADER` | `Pattern` | TODO: describe |
+| `BLOCK_HEADER` | `Pattern` | Anchored regex for the v1 block header (`minecraftgit-csv v1`, `origin=x,y,z`, `y=<ry>` and `quadrant=` followed by one of the four codes); groups 1–3 are origin X/Y/Z, group 4 is the relative Y and group 5 the quadrant code. |
+| `ENTITY_HEADER` | `Pattern` | Anchored regex for `# minecraftgit-entities v1 origin=<x>,<y>,<z>`; groups 1–3 are the origin coordinates. |
 
 ---
 
@@ -103,7 +103,7 @@ private static final Pattern ENTITY_HEADER;
 private QuadrantCsvReader()
 ```
 
-TODO: Provide detailed design explanation for `QuadrantCsvReader`.
+Private no-argument constructor; the class is a pure static facade, so there is no per-instance state and no configuration to pass.
 
 ---
 
@@ -113,7 +113,7 @@ TODO: Provide detailed design explanation for `QuadrantCsvReader`.
 public static Snapshot readSelection(Path selectionDir, String selectionName, BlockPos fallbackOrigin)
 ```
 
-TODO: Provide detailed design explanation for `readSelection`.
+If the directory is absent, returns `Snapshot.empty` with the selection name and the fallback origin (or `BlockPos.ORIGIN` when that is `null`) immediately, so a commit of a never-captured selection is not an error. Otherwise it opens a `Files.walk` limited to depth 2, keeps regular files whose name ends in `.csv` but is not `entities.csv`, sorts them by path (so the order is deterministic) and passes each to `readBlockFile`; it then reads `selectionDir/entities.csv` if it exists. The shared `BlockPos[] origin` is filled by the first header and validated by `mergeOrigin` for every later file. Finally the method resolves the origin (header, else fallback, else `BlockPos.ORIGIN`) and builds a `Snapshot` with `Instant.now()`, noting that this timestamp is read time rather than the original commit time. `IOException` from the walk is wrapped in `SerializationException` with the directory path.
 
 ---
 
@@ -123,7 +123,7 @@ TODO: Provide detailed design explanation for `readSelection`.
 private static void readBlockFile(Path file, List<BlockSnapshot> blocks, BlockPos[] origin)
 ```
 
-TODO: Provide detailed design explanation for `readBlockFile`.
+Reads the header line, rejects a `null` line as `Empty CSV file`, and applies `BLOCK_HEADER`; the regex requires the exact v1 token order, so a foreign header fails with `Unrecognized block CSV header`. It then parses origin and relative Y, resolves the quadrant through `Quadrant.fromCode`, and calls `mergeOrigin`. While reading rows it keeps `row` starting at 0, counts positions of blank lines (they still consume a row index but add nothing), parses each data line with `CsvLine.parse`, and for every non-empty cell calls `SnapshotCell.decode`. Row and column are converted with `rowToX`/`columnToZ`, `fileOrigin.add(rx, y, rz)` produces the absolute position, and `BlockSnapshot.at(absolute, fileOrigin, ...)` keeps both the absolute and relative forms. Number-format failures become `SerializationException("Invalid number in CSV file ...")`.
 
 ---
 
@@ -133,7 +133,7 @@ TODO: Provide detailed design explanation for `readBlockFile`.
 private static void readEntityFile(Path file, List<EntitySnapshot> entities, BlockPos[] origin)
 ```
 
-TODO: Provide detailed design explanation for `readEntityFile`.
+A missing or `null` header simply returns (an empty file is tolerated for entities, unlike block files). The header is validated with `ENTITY_HEADER` and its origin merged, then each non-blank row is split by `CsvLine.parse` and required to have at least seven columns. Columns are read as `double` relative X/Y/Z, `float` yaw/pitch, the type string, and the Base64 payload decoded to a UTF-8 string; `EntitySnapshot` is constructed with both the absolute position (`origin + relative`) and the relative offsets. An `IllegalArgumentException` from the decoder is rethrown as `Invalid entity payload`, and numeric failures as `Invalid number in entity CSV`.
 
 ---
 
@@ -143,6 +143,6 @@ TODO: Provide detailed design explanation for `readEntityFile`.
 private static void mergeOrigin(BlockPos[] origin, BlockPos fileOrigin, Path file)
 ```
 
-TODO: Provide detailed design explanation for `mergeOrigin`.
+Implements the origin contract shared by all files of a selection: the first call stores `fileOrigin` in element 0; every later call compares with `equals` and throws `SerializationException` on mismatch, naming the file and the expected origin. This is the guard against a selection whose Y directories were produced with different origins, which would otherwise place blocks at wrong absolute coordinates. Using a one-element array rather than a return value lets both the block loop and the entity reader share one mutable origin without extra state objects.
 
 ---

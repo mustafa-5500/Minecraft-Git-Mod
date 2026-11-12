@@ -14,7 +14,7 @@
 
 ## Usage
 
-TODO: Describe how `PullException` is instantiated and used.
+Pull and checkout preparation throw it for a selection missing from the remote commit, a refused partial pull, or an export/read I/O failure; command handlers catch `UserFacingException` (or this specific type) and display `getMessage()` in chat. Because the class is final, callers can rely on catching the exact type when they need pull-specific handling.
 
 ---
 
@@ -36,7 +36,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 
 | Import | Purpose |
 |--------|---------|
-| [`UserFacingException`](../util/UserFacingException.md) | TODO: describe purpose |
+| [`UserFacingException`](../util/UserFacingException.md) | Base class that marks the failure as safe to present to the player. |
 
 ---
 
@@ -46,7 +46,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 public final class PullException extends UserFacingException {
 ```
 
-- **`extends UserFacingException`** — TODO: explain inheritance.
+- **`extends UserFacingException`** — Inherits the unchecked, user-displayable contract, so a pull failure can be caught by the shared command-layer handler while remaining distinguishable by type.
 
 ---
 
@@ -56,7 +56,7 @@ public final class PullException extends UserFacingException {
 public PullException(String message)
 ```
 
-TODO: Provide detailed design explanation for `PullException`.
+Delegates to `UserFacingException(String)`: it stores the message and performs no I/O or validation, so constructing the exception is cheap even on a hot error path.
 
 ---
 
@@ -66,6 +66,6 @@ TODO: Provide detailed design explanation for `PullException`.
 public PullException(String message, Throwable cause)
 ```
 
-TODO: Provide detailed design explanation for `PullException`.
+Delegates to `UserFacingException(String, Throwable)`, preserving the cause chain for logs while exposing only the curated message to the player. `PullService` uses this form when wrapping `IOException`s from temp-directory or export operations.
 
 ---

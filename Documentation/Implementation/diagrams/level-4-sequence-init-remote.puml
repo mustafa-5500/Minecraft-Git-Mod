@@ -1,0 +1,89 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam sequence {
+  ArrowColor #475569
+  LifeLineBorderColor #94A3B8
+  ParticipantBackgroundColor #E8F1FB
+  ParticipantBorderColor #2B6CB0
+  ActorBackgroundColor #FFFFFF
+  ActorBorderColor #333333
+}
+hide footbox
+
+title L4 - /git init, /git repo, /git log and remote/transport commands
+
+actor Player as P
+participant "RepoCommands" as RC
+participant "WorldContext" as WC
+participant "RepoManager" as RM
+database "RepoMetadataStore\n(meta/<world>.json)" as META
+participant "RepoService" as RS
+participant "JGit" as GIT
+participant "Git remote" as REMOTE
+
+== /git init ==
+P -> RC : /git init
+RC -> WC : current(client)
+WC --> RC : worldId, displayName, dimension
+RC -> RM : init(worldId, playerName, null)  [IO]
+RM -> META : load(worldId, defaults)
+META --> RM : RepoMetadata (defaults filled)
+RM -> RM : if default identity:\nadopt player name/email
+RM -> RS : service(worldId) + setAuthor
+RM -> RS : init()
+alt repository exists
+  RS -> GIT : open(.git)
+  RS --> RM : RepoInfo(branch, HEAD, remote, clean)
+else new repository
+  RS -> GIT : Git.init(branch)
+  RS -> RS : configureAuthorLocked()
+  RS -> RS : writeBootstrapFiles()\nREADME.md + .gitattributes
+  RS -> GIT : add(".") + add(--update ".")
+  RS -> GIT : commit("Initialize MinecraftGit repository")
+  RS --> RM : RepoInfo
+end
+RM -> META : save(metadata: branch/author/remote)
+RM --> RC : RepoInfo
+RC --> P : path, branch, HEAD, multiplayer warning
+
+== /git remote add <name> <url> ==
+P -> RC : command
+RC -> RS : remoteAdd(name, url)  [IO]
+RS -> RS : validate name, toUri (local paths -> file:)
+RS -> GIT : remoteAdd(name, URI)
+RS -> GIT : ensure fetch refspec\n+refs/heads/*:refs/remotes/<name>/*
+RS --> RC : void
+RC --> P : "Remote '<name>' -> <url>"
+
+== /git fetch [remote] ==
+P -> RC : command
+RC -> RS : fetch(remote, NOOP)  [IO]
+RS -> RS : require valid/configured remote
+RS -> GIT : fetch +refs/heads/*:refs/remotes/<remote>/*\nremove deleted refs
+GIT -> REMOTE : Git protocol
+GIT --> RS : FetchResult
+RS --> RC : FetchSummary(updatedRefs)
+RC --> P : "Fetched ..."
+
+== /git push [--force] ==
+P -> RC : command
+RC -> RS : push(remote, force, NOOP)  [IO]
+RS -> RS : require attached branch + HEAD
+RS -> GIT : push refs/heads/<branch>:refs/heads/<branch>
+GIT -> REMOTE : Git protocol
+GIT --> RS : PushResult(s)
+RS -> RS : map OK/UP_TO_DATE/REJECTED_*\nthrow on rejection
+RS -> GIT : record branch.<branch>.remote/merge
+RS --> RC : PushSummary
+RC --> P : "Pushed ..." or rejection error
+
+== /git log [count] and /git repo ==
+P -> RC : command
+RC -> RS : log(count) / info()  [IO]
+RS -> GIT : log / read branch+HEAD+remote+status
+GIT --> RS : commits / state
+RS --> RC : List<CommitInfo> / RepoInfo
+RC --> P : formatted history / repository summary
+
+@enduml

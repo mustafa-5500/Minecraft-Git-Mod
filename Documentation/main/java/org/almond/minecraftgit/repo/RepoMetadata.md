@@ -28,7 +28,14 @@
 
 ## Usage
 
-TODO: Add usage examples for `RepoMetadata`.
+A mutable, local-only record of per-world repository settings: which branch and remote the world uses, the author identity, and the last active selection. It is created by `RepoMetadata.defaults` or loaded by `RepoMetadataStore`, cached by `RepoManager`, mutated through setters, and persisted with `RepoManager.saveMetadata`.
+
+```java
+RepoMetadata metadata = services.repos().metadata(worldId);
+metadata.setRemoteUrl("https://example.com/build.git");
+metadata.setAuthorName("Alex");
+services.repos().saveMetadata(metadata);
+```
 
 Per-world, local-only repository state. This file is never committed: it maps
 mod concepts (world id, default remote, author) onto Git concepts and may
@@ -38,14 +45,14 @@ differ between machines that share the same repository.
 
 ## Fields
 
-- `world` (`String`) — TODO: describe field
-- `branch` (`String`) — TODO: describe field
-- `remoteName` (`String`) — TODO: describe field
-- `remoteUrl` (`String`) — TODO: describe field
-- `authorName` (`String`) — TODO: describe field
-- `authorEmail` (`String`) — TODO: describe field
-- `lastSelection` (`String`) — TODO: describe field
-- `createdAt` (`String`) — TODO: describe field
+- `world` (`String`) — World key (`<world>__<dimension>`) this metadata belongs to; also determines the JSON file name used by the store.
+- `branch` (`String`) — Local branch created by `init` and compared during pull; defaults to `main`.
+- `remoteName` (`String`) — Name of the remote used when a command does not specify one; defaults to `origin`.
+- `remoteUrl` (`String`) — Last known URL for that remote, or `""` when no remote has been configured yet.
+- `authorName` (`String`) — Git author/committer name for this world, initially `MinecraftGit` and replaced by the player name on first init.
+- `authorEmail` (`String`) — Git author/committer email, initially `minecraftgit@localhost`.
+- `lastSelection` (`String`) — Name of the active selection remembered for the wand, or `""` when none.
+- `createdAt` (`String`) — ISO-8601 instant string captured when the defaults were built; informational only and never updated afterwards.
 
 ---
 
@@ -57,16 +64,16 @@ public static RepoMetadata defaults(String world, RepoOptions options)
 ```
 
 ### Description
-TODO: Describe what `defaults` does.
+Builds a fresh metadata object for a world that has no usable JSON file yet. It copies `branch`, `defaultRemote`, `authorName` and `authorEmail` from `options`, leaves `remoteUrl` and `lastSelection` empty, and stamps `createdAt` with `Instant.now()`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
-| `options` | [`RepoOptions`](RepoOptions.md) | TODO: describe |
+| `world` | `String` | World key assigned to the new metadata. |
+| `options` | [`RepoOptions`](RepoOptions.md) | Default branch, remote name and author identity, already canonicalized against blanks. |
 
 ### Returns
-`RepoMetadata` — TODO: describe return value.
+`RepoMetadata` — A new instance with copied defaults and the current timestamp.
 
 ---
 
@@ -80,14 +87,16 @@ public RepoMetadata normalize(String world, RepoOptions options)
 ### Description
 Fill in blanks introduced by older or hand-edited metadata files.
 
+Each field is checked independently: `world`, `branch`, `remoteName`, `authorName`, `authorEmail` and `createdAt` fall back to `defaults(world, options)`, while `remoteUrl` and `lastSelection` are only converted from `null` to `""` because no sensible default exists. Existing non-blank values are preserved, including a deliberately custom author, and the receiver is returned for chaining.
+
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
-| `options` | [`RepoOptions`](RepoOptions.md) | TODO: describe |
+| `world` | `String` | World key to substitute when the stored `world` is missing. |
+| `options` | [`RepoOptions`](RepoOptions.md) | Source of fallback branch, remote name and author identity. |
 
 ### Returns
-`RepoMetadata` — TODO: describe return value.
+`RepoMetadata` — The same instance after in-place repair.
 
 ---
 
@@ -99,13 +108,13 @@ public String world()
 ```
 
 ### Description
-TODO: Describe what `world` does.
+Returns the world key this metadata belongs to. After `defaults` or `normalize` it is never blank.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — The stored world key.
 
 ---
 
@@ -117,12 +126,12 @@ public void setWorld(String world)
 ```
 
 ### Description
-TODO: Describe what `setWorld` does.
+Overrides the world key. Note that `RepoMetadataStore.save` uses `metadata.world()` to choose the file, so changing it redirects subsequent saves to another world's file.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
+| `world` | `String` | New world key; not validated or sanitized here. |
 
 ### Returns
 `void`
@@ -137,13 +146,13 @@ public String branch()
 ```
 
 ### Description
-TODO: Describe what `branch` does.
+Returns the configured local branch name. `RepoOptions` has already replaced blanks, so this is normally non-blank.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — The branch used when creating or pulling the repository.
 
 ---
 
@@ -155,12 +164,12 @@ public void setBranch(String branch)
 ```
 
 ### Description
-TODO: Describe what `setBranch` does.
+Updates the stored branch name used when the world's `RepoService` is created and when `init` reports the branch. Existing services keep their original options.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `branch` | `String` | TODO: describe |
+| `branch` | `String` | New branch name; not validated. |
 
 ### Returns
 `void`
@@ -175,13 +184,13 @@ public String remoteName()
 ```
 
 ### Description
-TODO: Describe what `remoteName` does.
+Returns the remote name used by push/fetch/pull when the command does not name one explicitly.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — The stored remote name, normally `origin`.
 
 ---
 
@@ -193,12 +202,12 @@ public void setRemoteName(String remoteName)
 ```
 
 ### Description
-TODO: Describe what `setRemoteName` does.
+Updates the default remote name used by later commands and by newly created services. It does not create or rename the remote inside Git.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remoteName` | `String` | TODO: describe |
+| `remoteName` | `String` | New default remote name; not validated against existing remotes. |
 
 ### Returns
 `void`
@@ -213,13 +222,13 @@ public String remoteUrl()
 ```
 
 ### Description
-TODO: Describe what `remoteUrl` does.
+Returns the last URL recorded for the default remote, or `""` when the world has never configured one.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — The stored remote URL, possibly empty.
 
 ---
 
@@ -231,12 +240,12 @@ public void setRemoteUrl(String remoteUrl)
 ```
 
 ### Description
-TODO: Describe what `setRemoteUrl` does.
+Records the URL reported by `RepoInfo` after init so it can be shown or reused. It is informational: adding the actual Git remote remains `RepoService.remoteAdd`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `remoteUrl` | `String` | TODO: describe |
+| `remoteUrl` | `String` | Remote URL to remember; `null` is repaired to `""` only on the next normalize. |
 
 ### Returns
 `void`
@@ -251,13 +260,13 @@ public String authorName()
 ```
 
 ### Description
-TODO: Describe what `authorName` does.
+Returns the Git author/committer name stored for this world. It is used to build `RepoOptions` and to seed `RepoService`'s identity.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — The stored author name.
 
 ---
 
@@ -269,12 +278,12 @@ public void setAuthorName(String authorName)
 ```
 
 ### Description
-TODO: Describe what `setAuthorName` does.
+Updates the author name. `RepoManager.setAuthor` saves metadata and propagates the change to the live service, which also rewrites the repository's Git config.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `authorName` | `String` | TODO: describe |
+| `authorName` | `String` | New author name; blank values are rejected later by `RepoService.setAuthor`. |
 
 ### Returns
 `void`
@@ -289,13 +298,13 @@ public String authorEmail()
 ```
 
 ### Description
-TODO: Describe what `authorEmail` does.
+Returns the Git author/committer email stored for this world.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — The stored author email.
 
 ---
 
@@ -307,12 +316,12 @@ public void setAuthorEmail(String authorEmail)
 ```
 
 ### Description
-TODO: Describe what `setAuthorEmail` does.
+Updates the author email. As with the name, the value reaches Git only when `RepoManager.setAuthor` (or `init`) forwards it to the service.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `authorEmail` | `String` | TODO: describe |
+| `authorEmail` | `String` | New author email; blank values are rejected later by `RepoService.setAuthor`. |
 
 ### Returns
 `void`
@@ -327,13 +336,13 @@ public String lastSelection()
 ```
 
 ### Description
-TODO: Describe what `lastSelection` does.
+Returns the remembered active selection name for the world, or `""` when none has been stored.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — The remembered selection name, possibly empty.
 
 ---
 
@@ -345,12 +354,12 @@ public void setLastSelection(String lastSelection)
 ```
 
 ### Description
-TODO: Describe what `setLastSelection` does.
+Stores the wand's active selection name so it can be restored after a restart. `RepoManager.setLastSelection` coerces `null` to `""` before calling this setter.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `lastSelection` | `String` | TODO: describe |
+| `lastSelection` | `String` | Selection name to remember. |
 
 ### Returns
 `void`
@@ -365,13 +374,13 @@ public String createdAt()
 ```
 
 ### Description
-TODO: Describe what `createdAt` does.
+Returns the ISO-8601 timestamp string stamped when the metadata was first built. There is no setter, so the value is effectively immutable after `defaults`/`normalize`.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — The creation timestamp, e.g. `2026-11-12T18:41:10.123Z`.
 
 ---
 

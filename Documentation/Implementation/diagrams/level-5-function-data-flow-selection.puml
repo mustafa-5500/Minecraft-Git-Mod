@@ -1,0 +1,61 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontSize 11
+}
+skinparam ArrowFontSize 10
+hide stereotype
+left to right direction
+
+title L5 - Function data flow: wand click -> selection cuboid
+
+package "client.selection" {
+  rectangle "WandEvents.handleCorner()" as corner
+  rectangle "WandEvents.completeCuboid()" as complete
+  rectangle "SelectionManager.setCorner()" as setcorner
+  rectangle "SelectionManager.active()" as active
+  rectangle "SelectionManager.setPending()" as setpending
+  rectangle "SelectionManager.setActive()" as setactive
+}
+
+package "selection" {
+  rectangle "SelectionService.find()" as find
+  rectangle "SelectionService.addCuboid()" as addcuboid
+  rectangle "Selection.addCuboid()" as selectionadd
+  rectangle "SelectionMetadataStore.save()" as selsave
+}
+
+package "repo" {
+  rectangle "RepoManager.lastSelection()" as lastsel
+  rectangle "RepoManager.setLastSelection()" as setlastsel
+  rectangle "RepoMetadataStore.save()" as metasave
+}
+
+corner --> setcorner : "Player\nboolean first\nBlockPos corner"
+setcorner --> corner : "Optional<Cuboid>\n(null until both corners)"
+corner --> active : "WorldContext, Player"
+active --> lastsel : "worldId"
+active --> find : "worldId, UUID owner,\nString name"
+find --> active : "Optional<Selection>"
+
+corner --> complete : "WorldContext, Player,\nCuboid"
+complete --> setpending : "Player, Cuboid\n(no active selection)"
+complete --> addcuboid : "worldId, UUID owner,\nString name, Cuboid"
+addcuboid --> selectionadd : "Cuboid\n(count/volume checked first)"
+addcuboid --> selsave : "worldId, owner, ownerName,\nList<Selection> (atomic JSON)"
+complete --> setactive : "WorldContext, Player, name"
+setactive --> setlastsel : "worldId, name"
+setlastsel --> metasave : "RepoMetadata\n(atomic JSON)"
+
+note bottom of complete
+  If addCuboid throws (cap/volume),
+  the cuboid is put back as pending.
+  pos1/pos2 call handleCorner with the
+  targeted BlockPos, so they share this flow.
+end note
+
+@enduml

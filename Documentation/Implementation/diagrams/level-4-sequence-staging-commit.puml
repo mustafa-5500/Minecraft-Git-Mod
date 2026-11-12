@@ -1,0 +1,90 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam sequence {
+  ArrowColor #475569
+  LifeLineBorderColor #94A3B8
+  ParticipantBackgroundColor #E8F1FB
+  ParticipantBorderColor #2B6CB0
+  ActorBackgroundColor #FFFFFF
+  ActorBorderColor #333333
+}
+hide footbox
+
+title L4 - /git add (capture + stage) and /git commit
+
+actor Player as P
+participant "StagingCommands" as SC
+participant "WorldAccess" as WA
+participant "SnapshotService" as SS
+participant "Integrated server" as SRV
+participant "StagingService" as ST
+database "SnapshotStore\n(.snap files)" as STORE
+participant "SelectionService" as SEL
+database "SelectionMetadataStore" as SELDB
+participant "CommitCommands" as CC
+participant "CommitService" as CS
+participant "QuadrantCsvReader" as RD
+participant "QuadrantCsvWriter" as WR
+participant "RepoService" as RS
+participant "JGit" as GIT
+
+== /git add ==
+P -> SC : /git add <selection>
+SC -> SEL : get(worldId, owner, name)
+SEL --> SC : Selection
+SC -> WA : capture(services, world, selection)
+alt single-player
+  WA -> SRV : server.execute(capture)
+  SRV -> SS : capture(selection, ServerLevel, loadChunks=true)
+  SS -> SS : encode blocks/block entities/entities\nskip unloaded chunks, apply caps
+  SS --> SRV : CaptureResult
+  SRV --> WA : CaptureResult
+else multiplayer
+  WA -> SS : capture(selection, ClientLevel, loadChunks=false)
+  SS --> WA : CaptureResult
+end
+WA --> SC : CompletableFuture<CaptureResult>
+SC -> SC : result -> client.execute(...)
+SC -> ST : stage(selection, snapshot)  [IO]
+ST -> ST : rebase to selection origin if needed
+ST -> STORE : write(file, snapshot)\n(atomic gzip .snap)
+ST --> SC : StagedSelection
+SC -> SEL : setTracked(..., true)
+SEL -> SELDB : save(selections)
+SC -> SC : SelectionManager.setActive(...)
+SC --> P : "Staged '<name>': N blocks, M entities"
+
+== /git commit ==
+P -> CC : /git commit [message]
+CC -> SEL : list(worldId, owner)
+CC -> ST : hasStaged(...) per selection
+CC -> CC : build CommitRequest
+CC -> CS : commit(request)  [IO, commitLock]
+CS -> RS : service(worldId) / isInitialized()
+loop each staged selection
+  CS -> ST : load(worldId, owner, name)
+  ST --> CS : StagedSelection(Snapshot)
+  CS -> RS : path()
+  CS -> RD : readSelection(oldDir, name, origin)
+  RD --> CS : old HEAD Snapshot
+  CS -> CS : BuildDiff.between(old, staged)\nskip if unchanged and origin same
+  CS -> WR : writeSelection(tempDir, staged)
+  CS -> CS : commitMessage(...) + CommitMeta
+  CS -> CS : collectFiles(tempDir) -> Map<String,byte[]>
+end
+CS -> RS : commitWorkspace(files, dirs, message, allowEmpty)
+RS -> GIT : delete replaced dirs, write files,\nadd(".") + add(--update "."),\ncommit(identity)
+GIT --> RS : commit id
+RS --> CS : commit id
+CS -> ST : deleteAll(...) per requested selection
+CS --> CC : CommitResult
+CC --> P : chat: short id, +/- counts,\nfirst message line
+
+note over CS,RS
+  A failure before JGit commit leaves
+  no new commit; a failure after apply
+  is not possible here (no world writes).
+end note
+
+@enduml

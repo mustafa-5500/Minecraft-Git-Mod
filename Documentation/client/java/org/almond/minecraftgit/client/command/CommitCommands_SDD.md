@@ -18,13 +18,13 @@
 
 ## Usage
 
-TODO: Describe how `CommitCommands` is instantiated and used.
+`CommitCommands` is a static command module: `GitCommand.register` calls `attach(root, services)` once, and no instance state is kept. The handler validates client state, builds a `CommitRequest`, and hands the actual repository work to `CommitService` on the IO pool, with `CommandSupport.complete` returning the result to the client thread.
 
 ---
 
 ## 1. Overview
 
-{@code /git commit [message]}: write all staged selections to the repository.
+`/git commit [message]`: write all staged selections to the repository.
 
 ---
 
@@ -52,19 +52,19 @@ import java.util.List;
 
 | Import | Purpose |
 |--------|---------|
-| `StringArgumentType` | TODO: describe purpose |
-| `LiteralArgumentBuilder` | TODO: describe purpose |
-| `ClientCommandManager` | TODO: describe purpose |
-| `FabricClientCommandSource` | TODO: describe purpose |
-| `Player` | TODO: describe purpose |
-| [`GitServices`](../GitServices.md) | TODO: describe purpose |
-| [`WorldContext`](../WorldContext.md) | TODO: describe purpose |
-| [`CommitRequest`](../../../../../../../main/java/org/almond/minecraftgit/commit/CommitRequest.md) | TODO: describe purpose |
-| [`CommitResult`](../../../../../../../main/java/org/almond/minecraftgit/commit/CommitResult.md) | TODO: describe purpose |
-| [`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) | TODO: describe purpose |
-| [`SelectionException`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionException.md) | TODO: describe purpose |
-| `ArrayList` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
+| `StringArgumentType` | declares the greedy `message` argument |
+| `LiteralArgumentBuilder` | root builder the `commit` literal attaches to |
+| `ClientCommandManager` | Fabric factory for the `commit`/`--empty` literals and the `message` argument |
+| `FabricClientCommandSource` | handler source for player, client and feedback |
+| `Player` | supplies the UUID and name used for selection/staging keys and commit metadata |
+| [`GitServices`](../GitServices.md) | access to repositories, selections, staging, commits and messages |
+| [`WorldContext`](../WorldContext.md) | world id and game mode recorded in the commit |
+| [`CommitRequest`](../../../../../../../main/java/org/almond/minecraftgit/commit/CommitRequest.md) | immutable input passed to `CommitService` |
+| [`CommitResult`](../../../../../../../main/java/org/almond/minecraftgit/commit/CommitResult.md) | async result rendered by `showResult` |
+| [`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) | staged selections collected before the async commit |
+| [`SelectionException`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionException.md) | player-readable validation failures |
+| `ArrayList` | mutable list used to gather staged selections |
+| `List` | type of the frozen selection list in `CommitRequest` |
 
 ---
 
@@ -74,6 +74,7 @@ import java.util.List;
 public final class CommitCommands {
 ```
 
+- **`final` with a private constructor** — a static command module; it owns no state because per-commit data travels in the immutable `CommitRequest` and repository state lives in `CommitService`.
 
 ---
 
@@ -83,7 +84,7 @@ public final class CommitCommands {
 private CommitCommands()
 ```
 
-TODO: Provide detailed design explanation for `CommitCommands`.
+Private constructor enforces the static-module pattern. Because no state is stored, concurrent command executions share only the services reachable through `services`; `CommitService` serializes repository writes with its own commit lock.
 
 ---
 
@@ -93,7 +94,7 @@ TODO: Provide detailed design explanation for `CommitCommands`.
 public static void attach(LiteralArgumentBuilder<FabricClientCommandSource> root, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `attach`.
+Builds a single `commit` literal with three forms: no arguments (`message=null`, `allowEmpty=false`), `--empty` (allowEmpty=true) and a greedy `message` (allowEmpty=false), plus `--empty <message>`. Brigadier treats `--empty` as a literal, so it must come before a free-form message; `greedyString()` keeps the message verbatim, including spaces.
 
 ---
 
@@ -104,7 +105,7 @@ private static int commit(FabricClientCommandSource source, GitServices services
                               String message, boolean allowEmpty)
 ```
 
-TODO: Provide detailed design explanation for `commit`.
+Data flow: validate player and repo, compute `WorldContext`, list the player's selections and keep those whose staging file exists, then fail fast if the result is empty and `--empty` was not given. All client-thread state is captured in a `CommitRequest` (including `List.copyOf` so the async task cannot observe later mutations). `CommandSupport.complete` schedules `services.commits().commit(request)` on the IO executor and calls `showResult` on the client thread; returning `1` means scheduled, not completed. `CommitService` independently re-checks initialization/emptiness and raises `CommitException` for races such as a staging file disappearing.
 
 ---
 
@@ -114,7 +115,7 @@ TODO: Provide detailed design explanation for `commit`.
 private static void showResult(FabricClientCommandSource source, GitServices services, CommitResult result)
 ```
 
-TODO: Provide detailed design explanation for `showResult`.
+Renders a success line with short id, selection count, `+added ~changed -removed` totals and entity changes, then the first line of the commit message (split on the first line break so multi-line messages stay compact). If `result.selections()` is empty it warns that the commit recorded no file changes.
 
 ---
 
@@ -124,7 +125,7 @@ TODO: Provide detailed design explanation for `showResult`.
 private static Player requirePlayer(FabricClientCommandSource source)
 ```
 
-TODO: Provide detailed design explanation for `requirePlayer`.
+Local guard used instead of `CommandSupport.requirePlayer`; a null player raises `SelectionException` with the standard message, otherwise the player is returned for its UUID and name.
 
 ---
 
@@ -134,6 +135,6 @@ TODO: Provide detailed design explanation for `requirePlayer`.
 private static WorldContext world(FabricClientCommandSource source)
 ```
 
-TODO: Provide detailed design explanation for `world`.
+Delegates to `WorldContext.current`, which throws `UserFacingException` when no level is loaded and otherwise derives the `<world>__<dimension>` id used as the repository key.
 
 ---

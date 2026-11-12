@@ -11,7 +11,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `CommitException`.
+`CommitService` throws it for user-correctable commit failures such as an uninitialized repository, no staged selections, a selection that is no longer staged, or nothing to commit; the command layer catches the `UserFacingException` base type and prints the message in chat. Example: `throw new CommitException("Nothing is staged. Use /git add <selection> first.");`
 
 A commit could not be created for a user-correctable reason.
 
@@ -25,12 +25,12 @@ public CommitException(String message)
 ```
 
 ### Description
-TODO: Describe what `CommitException` does.
+Creates an exception with a chat-safe message that explains the commit failure; no cause is attached.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | User-facing explanation of why the commit could not be created. |
 
 ### Returns
 `CommitException` instance.
@@ -45,13 +45,13 @@ public CommitException(String message, Throwable cause)
 ```
 
 ### Description
-TODO: Describe what `CommitException` does.
+Creates an exception with a chat-safe message and retains the underlying cause (for example an `IOException` from building the commit tree) for logging.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
-| `cause` | `Throwable` | TODO: describe |
+| `message` | `String` | User-facing explanation of the failure. |
+| `cause` | `Throwable` | Underlying throwable, preserved for diagnostics but not shown verbatim to the player. |
 
 ### Returns
 `CommitException` instance.

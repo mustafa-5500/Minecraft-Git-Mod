@@ -14,7 +14,7 @@
 
 ## Usage
 
-TODO: Describe how `BackupException` is instantiated and used.
+It is thrown by `BackupService.store`, `list` and `requireName`, and bubbles through `ApplyService` and `PullCommands` as a `UserFacingException` so the player sees a chat error. It is unchecked and marks recoverable local-storage or name-validation failures rather than programming errors.
 
 ---
 
@@ -36,7 +36,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 
 | Import | Purpose |
 |--------|---------|
-| [`UserFacingException`](../util/UserFacingException.md) | TODO: describe purpose |
+| [`UserFacingException`](../util/UserFacingException.md) | Base runtime exception whose messages are safe to display in chat. |
 
 ---
 
@@ -46,7 +46,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 public final class BackupException extends UserFacingException {
 ```
 
-- **`extends UserFacingException`** — TODO: explain inheritance.
+- **`extends UserFacingException`** — Extends the unchecked `UserFacingException`, so callers are not forced to declare it and the command layer can render it like any other user-facing failure.
 
 ---
 
@@ -56,7 +56,7 @@ public final class BackupException extends UserFacingException {
 public BackupException(String message)
 ```
 
-TODO: Provide detailed design explanation for `BackupException`.
+Delegates to `UserFacingException(String)`; used for validation-style failures such as an invalid selection name.
 
 ---
 
@@ -66,6 +66,6 @@ TODO: Provide detailed design explanation for `BackupException`.
 public BackupException(String message, Throwable cause)
 ```
 
-TODO: Provide detailed design explanation for `BackupException`.
+Delegates to `UserFacingException(String, Throwable)`; used when wrapping `IOException` from directory creation, snapshot writing or listing.
 
 ---

@@ -20,7 +20,7 @@
 
 ## Usage
 
-TODO: Describe how `SelectionMetadataStore` is instantiated and used.
+Instantiated by `SelectionService` with `config.selectionsRoot()`; `SelectionService` is the normal entry point, while sync and status code may call `loadAll` on the store for console-side reads.
 
 ---
 
@@ -61,24 +61,24 @@ import java.util.stream.Stream;
 
 | Import | Purpose |
 |--------|---------|
-| `Gson` | TODO: describe purpose |
-| `GsonBuilder` | TODO: describe purpose |
-| `JsonArray` | TODO: describe purpose |
-| `JsonObject` | TODO: describe purpose |
-| `JsonParser` | TODO: describe purpose |
-| `JsonSyntaxException` | TODO: describe purpose |
-| [`Selection`](../model/Selection.md) | TODO: describe purpose |
-| [`Names`](../util/Names.md) | TODO: describe purpose |
-| `IOException` | TODO: describe purpose |
-| `StandardCharsets` | TODO: describe purpose |
-| `AtomicMoveNotSupportedException` | TODO: describe purpose |
-| `Files` | TODO: describe purpose |
-| `Path` | TODO: describe purpose |
-| `StandardCopyOption` | TODO: describe purpose |
-| `ArrayList` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
-| `UUID` | TODO: describe purpose |
-| `Stream` | TODO: describe purpose |
+| `Gson` | Serializes the selections array and the surrounding wrapper tree to and from JSON. |
+| `GsonBuilder` | Builds a pretty-printing Gson instance with HTML escaping disabled. |
+| `JsonArray` | Represents the wrapper's `selections` array while reading. |
+| `JsonObject` | Represents the versioned wrapper object read and written around the array. |
+| `JsonParser` | Parses the outer JSON string before Gson maps the array to `Selection[]`. |
+| `JsonSyntaxException` | Caught together with `IllegalStateException` to report a corrupt metadata file. |
+| [`Selection`](../model/Selection.md) | Element type serialized and deserialized, then normalized on load. |
+| [`Names`](../util/Names.md) | Sanitizes world ids into filesystem-safe directory names. |
+| `IOException` | Caught around every file operation and wrapped as a `SelectionException`. |
+| `StandardCharsets` | UTF-8 charset used for both reads and writes. |
+| `AtomicMoveNotSupportedException` | Signals that the filesystem rejects atomic moves, triggering the plain-replace fallback. |
+| `Files` | Existence checks, directory creation, reads/writes and the final move. |
+| `Path` | File and directory handles for the root and per-owner files. |
+| `StandardCopyOption` | Provides `REPLACE_EXISTING` and `ATOMIC_MOVE` semantics for the save move. |
+| `ArrayList` | Mutable result lists, including the empty-list defaults on missing files. |
+| `List` | API result and parameter type for collections of selections. |
+| `UUID` | Owner identity used in paths and in normalization fallbacks. |
+| `Stream` | Lists the world directory's JSON files in `loadAll`. |
 
 ---
 
@@ -101,9 +101,9 @@ private final Gson gson;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `FORMAT_VERSION` | `int` | TODO: describe |
-| `root` | `Path` | TODO: describe |
-| `gson` | `Gson` | TODO: describe |
+| `FORMAT_VERSION` | `int` | Schema marker (`1`) written as the `format` property; currently informational and reserved for migrations. |
+| `root` | `Path` | Absolute normalized selections directory under which all paths resolve. |
+| `gson` | `Gson` | Shared pretty-printing Gson with HTML escaping disabled, used for the wrapper and the array. |
 
 ---
 
@@ -113,7 +113,7 @@ private final Gson gson;
 public SelectionMetadataStore(Path root)
 ```
 
-TODO: Provide detailed design explanation for `SelectionMetadataStore`.
+Stores `root.toAbsolutePath().normalize()` and constructs the Gson instance; no directories are created and no files are read, so construction is cheap and IO-free.
 
 ---
 
@@ -123,7 +123,7 @@ TODO: Provide detailed design explanation for `SelectionMetadataStore`.
 public Path file(String world, UUID owner)
 ```
 
-TODO: Provide detailed design explanation for `file`.
+Builds `<sanitized world>/<owner>.json`, delegating sanitization to `Names.safeWorldName`, which replaces anything outside `[A-Za-z0-9_.-]` with `_`. The UUID is used raw because its format is already filename-safe.
 
 ---
 
@@ -133,7 +133,7 @@ TODO: Provide detailed design explanation for `file`.
 public List<Selection> load(String world, UUID owner)
 ```
 
-TODO: Provide detailed design explanation for `load`.
+Convenience wrapper that calls `loadFile` for the player's file, passing the world as the fallback world and an empty owner-name fallback; a missing file returns an empty mutable list rather than an error. All normalization fallbacks refer to the requested world and owner.
 
 ---
 
@@ -143,7 +143,7 @@ TODO: Provide detailed design explanation for `load`.
 public List<Selection> loadFile(Path file, String world, UUID fallbackOwner, String fallbackOwnerName)
 ```
 
-TODO: Provide detailed design explanation for `loadFile`.
+Guards with `Files.isRegularFile`, reads UTF-8, parses the wrapper, and treats a missing `selections` array as empty. Each parsed entry is passed through `Selection.normalize` with the supplied world, owner and name fallbacks; parse/state failures produce a delete-the-file error while IO failures report the path and message.
 
 ---
 
@@ -163,7 +163,7 @@ All players' selections in a world. Used by status/pull for console contexts.
 public void save(String world, UUID owner, String ownerName, List<Selection> selections)
 ```
 
-TODO: Provide detailed design explanation for `save`.
+Writes a versioned wrapper object containing `format`, `world`, `owner`, `ownerName` and `selections` to a `.tmp` sibling, then moves it onto the target with `ATOMIC_MOVE` and `REPLACE_EXISTING`, falling back to a plain replace when atomic moves are unsupported. This prevents a crash from leaving a half-written JSON file, and IO errors are surfaced as `SelectionException`.
 
 ---
 
@@ -173,6 +173,6 @@ TODO: Provide detailed design explanation for `save`.
 private static UUID ownerFromFileName(Path file)
 ```
 
-TODO: Provide detailed design explanation for `ownerFromFileName`.
+Strips a trailing `.json` and parses the stem as a UUID, returning the all-zero UUID on `IllegalArgumentException` so an unexpected file cannot abort a `loadAll` scan.
 
 ---

@@ -29,16 +29,16 @@
 
 ## Usage
 
-TODO: Describe how `ModConfig` is instantiated and used.
+`MinecraftGitClient.onInitializeClient` calls `ModConfig.load` with `FabricLoader.getInstance().getConfigDir().resolve(MinecraftGit.MOD_ID)` before building `GitServices`, and that single instance is passed to every service; commands mutate fields and call `save()`. On a successful load it rewrites `config.json` with normalized values, so the file also documents the schema.
 
 ---
 
 ## 1. Overview
 
-Typed view over {@code config/minecraftgit/config.json}.
-<p>The fields are the persisted schema. Defaults are deliberately conservative
+Typed view over `config/minecraftgit/config.json`.
+The fields are the persisted schema. Defaults are deliberately conservative
 for client memory/tick budgets; the plugin's much larger caps assume a server
-thread that can spend seconds on a capture.</p>
+thread that can spend seconds on a capture.
 
 ---
 
@@ -63,16 +63,16 @@ import java.nio.file.StandardCopyOption;
 
 | Import | Purpose |
 |--------|---------|
-| `Gson` | TODO: describe purpose |
-| `GsonBuilder` | TODO: describe purpose |
-| `JsonSyntaxException` | TODO: describe purpose |
-| [`MinecraftGit`](../MinecraftGit.md) | TODO: describe purpose |
-| `IOException` | TODO: describe purpose |
-| `StandardCharsets` | TODO: describe purpose |
-| `AtomicMoveNotSupportedException` | TODO: describe purpose |
-| `Files` | TODO: describe purpose |
-| `Path` | TODO: describe purpose |
-| `StandardCopyOption` | TODO: describe purpose |
+| `Gson` | Serializes and deserializes the config object to JSON. |
+| `GsonBuilder` | Creates the pretty-printing, non-HTML-escaping Gson instance. |
+| `JsonSyntaxException` | Detected on load so corrupt JSON falls back to defaults. |
+| [`MinecraftGit`](../MinecraftGit.md) | Provides `MOD_ID` and the shared `LOGGER` for warnings. |
+| `IOException` | Caught around directory and file read-write. |
+| `StandardCharsets` | UTF-8 for reading and writing config JSON. |
+| `AtomicMoveNotSupportedException` | Triggers fallback to a non-atomic `Files.move`. |
+| `Files` | Creates dirs, reads the file, writes the temp file and moves it. |
+| `Path` | Config root and file locations. |
+| `StandardCopyOption` | `REPLACE_EXISTING` and `ATOMIC_MOVE` options for the save move. |
 
 ---
 
@@ -112,26 +112,26 @@ private transient Gson gson;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `debug` | `boolean` | TODO: describe |
-| `debugBlocks` | `boolean` | TODO: describe |
-| `branch` | `String` | TODO: describe |
-| `defaultRemote` | `String` | TODO: describe |
-| `wandItem` | `String` | TODO: describe |
-| `prefix` | `String` | TODO: describe |
-| `committerName` | `String` | TODO: describe |
-| `committerEmail` | `String` | TODO: describe |
-| `maxCuboidsPerSelection` | `int` | TODO: describe |
-| `maxVolumePerSelection` | `long` | TODO: describe |
-| `maxBlocksPerCommit` | `long` | TODO: describe |
-| `maxEntitiesPerSelection` | `int` | TODO: describe |
-| `maxBlockEntityBytes` | `int` | TODO: describe |
-| `statusMaxVolume` | `long` | TODO: describe |
-| `blocksPerTick` | `int` | TODO: describe |
-| `maxBackups` | `int` | TODO: describe |
-| `renderSelections` | `boolean` | TODO: describe |
-| `renderBudget` | `int` | TODO: describe |
-| `root` | `transient Path` | TODO: describe |
-| `gson` | `transient Gson` | TODO: describe |
+| `debug` | `boolean` | Persisted flag (`false` default) read when `DebugLogger` is constructed. |
+| `debugBlocks` | `boolean` | Persisted per-block flag (`false`), toggled separately from `debug`. |
+| `branch` | `String` | Persisted branch default `main`; non-blank after normalization. |
+| `defaultRemote` | `String` | Persisted remote name default `origin`; non-blank after normalization. |
+| `wandItem` | `String` | Persisted wand registry id default `minecraft:wooden_shovel`. |
+| `prefix` | `String` | Persisted chat prefix default `[Git] `; null becomes empty. |
+| `committerName` | `String` | Persisted Git identity name default `MinecraftGit`. |
+| `committerEmail` | `String` | Persisted Git identity email default `minecraftgit@localhost`. |
+| `maxCuboidsPerSelection` | `int` | Persisted capture guard default 64; positive after normalization. |
+| `maxVolumePerSelection` | `long` | Persisted per-selection volume guard default 1,000,000 blocks. |
+| `maxBlocksPerCommit` | `long` | Persisted per-capture block guard default 2,000,000. |
+| `maxEntitiesPerSelection` | `int` | Persisted entity cap default 2000. |
+| `maxBlockEntityBytes` | `int` | Persisted block-entity payload cap default 262,144 bytes. |
+| `statusMaxVolume` | `long` | Persisted `/git status` capture threshold default 250,000 blocks. |
+| `blocksPerTick` | `int` | Persisted apply throttle default 4096 block writes per tick. |
+| `maxBackups` | `int` | Persisted per-selection backup retention default 10. |
+| `renderSelections` | `boolean` | Persisted outline-rendering toggle default true. |
+| `renderBudget` | `int` | Persisted cap on outline particle draws per render pass, default 256. |
+| `root` | `transient Path` | Transient absolute data root; Gson skips it and `load` sets it. |
+| `gson` | `transient Gson` | Transient shared Gson; skipped by serialization and set by `load`. |
 
 ---
 
@@ -141,7 +141,7 @@ private transient Gson gson;
 private ModConfig()
 ```
 
-TODO: Provide detailed design explanation for `ModConfig`.
+Private no-arg constructor for Gson reflection and `load`; defaults live in field initializers so a JSON file may omit any key, and the transient `root`/`gson` stay null until `load` assigns them.
 
 ---
 
@@ -163,7 +163,7 @@ left untouched so a player can fix it.
 public Path root()
 ```
 
-TODO: Provide detailed design explanation for `root`.
+Returns the transient root installed by `load`; path accessors resolve against it and `save` silently no-ops while it is null.
 
 ---
 
@@ -173,7 +173,7 @@ TODO: Provide detailed design explanation for `root`.
 public Path file()
 ```
 
-TODO: Provide detailed design explanation for `file`.
+Returns `<root>/config.json`, the exact file read by `load` and written atomically by `save`.
 
 ---
 
@@ -183,7 +183,7 @@ TODO: Provide detailed design explanation for `file`.
 public Path reposRoot()
 ```
 
-TODO: Provide detailed design explanation for `reposRoot`.
+Returns `<root>/repos`; `RepoManager` uses it as the repository parent, keeping repositories outside the save folder.
 
 ---
 
@@ -193,7 +193,7 @@ TODO: Provide detailed design explanation for `reposRoot`.
 public Path metaRoot()
 ```
 
-TODO: Provide detailed design explanation for `metaRoot`.
+Returns `<root>/meta`, where `RepoManager` stores per-world repository settings and the active selection.
 
 ---
 
@@ -203,7 +203,7 @@ TODO: Provide detailed design explanation for `metaRoot`.
 public Path selectionsRoot()
 ```
 
-TODO: Provide detailed design explanation for `selectionsRoot`.
+Returns `<root>/selections`, the per-world/player selection metadata root.
 
 ---
 
@@ -213,7 +213,7 @@ TODO: Provide detailed design explanation for `selectionsRoot`.
 public Path stagingRoot()
 ```
 
-TODO: Provide detailed design explanation for `stagingRoot`.
+Returns `<root>/staging`, passed to `StagingService` as the root for gzipped staged snapshots.
 
 ---
 
@@ -223,7 +223,7 @@ TODO: Provide detailed design explanation for `stagingRoot`.
 public Path backupsRoot()
 ```
 
-TODO: Provide detailed design explanation for `backupsRoot`.
+Returns `<root>/backups`, passed to `BackupService` as the pre-apply backup root.
 
 ---
 
@@ -233,7 +233,7 @@ TODO: Provide detailed design explanation for `backupsRoot`.
 public Path tmpRoot()
 ```
 
-TODO: Provide detailed design explanation for `tmpRoot`.
+Returns `<root>/tmp`, used for transient commit and pull trees that are deleted after use.
 
 ---
 
@@ -243,7 +243,7 @@ TODO: Provide detailed design explanation for `tmpRoot`.
 public Path logsRoot()
 ```
 
-TODO: Provide detailed design explanation for `logsRoot`.
+Returns `<root>/logs`, passed to `DebugLogger` for optional log files.
 
 ---
 
@@ -263,7 +263,7 @@ Fill in blanks and reject non-positive sizes.
 public void save()
 ```
 
-TODO: Provide detailed design explanation for `save`.
+`save` is synchronized, creates the root, writes the Gson JSON to `config.json.tmp` in UTF-8 and promotes it with `REPLACE_EXISTING` plus `ATOMIC_MOVE`; if the filesystem rejects an atomic move it retries a plain replace. IO failures are logged through `MinecraftGit.LOGGER` and swallowed, and the method returns without writing when `root`/`gson` are unset.
 
 ---
 
@@ -273,7 +273,7 @@ TODO: Provide detailed design explanation for `save`.
 private static String nonBlank(String value, String fallback)
 ```
 
-TODO: Provide detailed design explanation for `nonBlank`.
+Guard used by `normalize` for string fields: returns `fallback` for null or blank input, otherwise the original value (not trimmed).
 
 ---
 
@@ -283,7 +283,7 @@ TODO: Provide detailed design explanation for `nonBlank`.
 private static int positive(int value, int fallback)
 ```
 
-TODO: Provide detailed design explanation for `positive`.
+Guard used by `normalize` for int limits: returns `fallback` unless `value > 0`.
 
 ---
 
@@ -293,6 +293,6 @@ TODO: Provide detailed design explanation for `positive`.
 private static long positive(long value, long fallback)
 ```
 
-TODO: Provide detailed design explanation for `positive`.
+Long overload of the same guard, used for volume and block limits; returns `fallback` unless `value > 0`.
 
 ---

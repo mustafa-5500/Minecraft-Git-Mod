@@ -15,15 +15,15 @@
 
 ## Usage
 
-TODO: Describe how `MinecraftGit` is instantiated and used.
+Referenced statically from both source sets; the client entrypoint reads `MOD_ID` for its config directory, main and client code log through `LOGGER`, and `id()` creates namespaced resources.
 
 ---
 
 ## 1. Overview
 
 Shared identity for the client-side Minecraft Git mod.
-<p>This class lives in {@code src/main} so the repository and serialization
-layers can refer to the mod id without pulling in client-only classes.</p>
+This class lives in `src/main` so the repository and serialization
+layers can refer to the mod id without pulling in client-only classes.
 
 ---
 
@@ -41,9 +41,9 @@ import org.slf4j.LoggerFactory;
 
 | Import | Purpose |
 |--------|---------|
-| `ResourceLocation` | TODO: describe purpose |
-| `Logger` | TODO: describe purpose |
-| `LoggerFactory` | TODO: describe purpose |
+| `ResourceLocation` | Return type of `id()` for namespaced identifiers. |
+| `Logger` | SLF4J logging facade shared by all layers. |
+| `LoggerFactory` | Creates the shared logger named after the mod id. |
 
 ---
 
@@ -65,8 +65,8 @@ public static final Logger LOGGER;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `MOD_ID` | `String` | TODO: describe |
-| `LOGGER` | `Logger` | TODO: describe |
+| `MOD_ID` | `String` | Single source of truth for the mod id and resource namespace (`minecraftgit`). |
+| `LOGGER` | `Logger` | Shared logger created from `MOD_ID` at class initialization. |
 
 ---
 
@@ -76,7 +76,7 @@ public static final Logger LOGGER;
 private MinecraftGit()
 ```
 
-TODO: Provide detailed design explanation for `MinecraftGit`.
+Private and empty: the class is a static identity holder, and preventing instantiation keeps the API to constants and `id()`.
 
 ---
 
@@ -86,6 +86,6 @@ TODO: Provide detailed design explanation for `MinecraftGit`.
 public static ResourceLocation id(String path)
 ```
 
-Creates a {@link ResourceLocation} in this mod's namespace.
+Creates a `ResourceLocation` in this mod's namespace.
 
 ---

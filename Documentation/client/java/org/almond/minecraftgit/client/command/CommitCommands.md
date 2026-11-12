@@ -16,9 +16,9 @@
 
 ## Usage
 
-TODO: Add usage examples for `CommitCommands`.
+`CommitCommands.attach` is called by `GitCommand.register` and adds the `/git commit` subtree; the class is never instantiated. Examples: `/git commit` (commit every staged selection with a generated message), `/git commit Added the tower`, `/git commit --empty`, and `/git commit --empty "checkpoint"`.
 
-{@code /git commit [message]}: write all staged selections to the repository.
+`/git commit [message]`: write all staged selections to the repository.
 
 ---
 
@@ -30,7 +30,7 @@ private CommitCommands()
 ```
 
 ### Description
-TODO: Describe what `CommitCommands` does.
+Private constructor; the class is a static command module that only attaches nodes to the shared root.
 
 ### Parameters
 None.
@@ -48,13 +48,13 @@ public static void attach(LiteralArgumentBuilder<FabricClientCommandSource> root
 ```
 
 ### Description
-TODO: Describe what `attach` does.
+Adds the `commit` literal to the root: the plain form commits all staged selections, an optional greedy `message` argument overrides the generated message, and the `--empty` child permits a commit when nothing is staged or nothing changed, optionally with its own message.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `root` | `LiteralArgumentBuilder<FabricClientCommandSource>` | TODO: describe |
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
+| `root` | `LiteralArgumentBuilder<FabricClientCommandSource>` | shared `/git` root the `commit` node is attached to |
+| `services` | [`GitServices`](../GitServices.md) | service graph used by the handler |
 
 ### Returns
 `void`
@@ -70,18 +70,18 @@ private static int commit(FabricClientCommandSource source, GitServices services
 ```
 
 ### Description
-TODO: Describe what `commit` does.
+Handler for all commit variants. It requires a player and an initialized repository, collects the player's selections that have a staged snapshot (`StagingService.hasStaged`), and fails when none are staged unless `allowEmpty` is set. It then builds an immutable `CommitRequest` (player name/UUID, world id, game mode, staged selections, message, allowEmpty), sends a progress line, and runs `CommitService.commit` on the IO executor through `CommandSupport.complete`, reporting the result with `showResult`. The method returns `1` once scheduling succeeds.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
-| `message` | `String` | TODO: describe |
-| `allowEmpty` | `boolean` | TODO: describe |
+| `source` | `FabricClientCommandSource` | command source providing the player and chat feedback |
+| `services` | [`GitServices`](../GitServices.md) | repository, selection, staging and commit services |
+| `message` | `String` | optional commit message; `null` or blank uses the generated summary |
+| `allowEmpty` | `boolean` | whether `--empty` was passed, permitting no staged or changed selections |
 
 ### Returns
-`int` — TODO: describe return value.
+`int` — `1` when the commit was scheduled, `0` if validation failed and the error was reported.
 
 ---
 
@@ -93,14 +93,14 @@ private static void showResult(FabricClientCommandSource source, GitServices ser
 ```
 
 ### Description
-TODO: Describe what `showResult` does.
+Formats the completed commit in chat: short id, number of committed selections, `+added ~changed -removed` block totals and entity changes, followed by the first line of the commit message. When no selection files changed it adds a warning that this was an empty commit.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
-| `result` | [`CommitResult`](../../../../../../../main/java/org/almond/minecraftgit/commit/CommitResult.md) | TODO: describe |
+| `source` | `FabricClientCommandSource` | destination for the result messages |
+| `services` | [`GitServices`](../GitServices.md) | message sender used for success/warn output |
+| `result` | [`CommitResult`](../../../../../../../main/java/org/almond/minecraftgit/commit/CommitResult.md) | outcome produced by `CommitService` |
 
 ### Returns
 `void`
@@ -115,15 +115,15 @@ private static Player requirePlayer(FabricClientCommandSource source)
 ```
 
 ### Description
-TODO: Describe what `requirePlayer` does.
+Returns the player from the source or throws `SelectionException` when the source is not a player, using the same `only be run by a player` wording as `CommandSupport`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
+| `source` | `FabricClientCommandSource` | source to read the player from |
 
 ### Returns
-`Player` — TODO: describe return value.
+`Player` — the player running the command; never `null`.
 
 ---
 
@@ -135,15 +135,15 @@ private static WorldContext world(FabricClientCommandSource source)
 ```
 
 ### Description
-TODO: Describe what `world` does.
+Derives the current `WorldContext` from the client, which supplies the world id used for repository and staging keys; throws `UserFacingException` if no world is open.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
+| `source` | `FabricClientCommandSource` | source whose client holds the current level |
 
 ### Returns
-[`WorldContext`](../WorldContext.md) — TODO: describe return value.
+[`WorldContext`](../WorldContext.md) — the open world's id, dimension and single-player flag.
 
 ---
 

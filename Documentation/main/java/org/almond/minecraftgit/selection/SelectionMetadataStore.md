@@ -18,7 +18,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `SelectionMetadataStore`.
+Created by `SelectionService` with `config.selectionsRoot()`; most code should use the service, but pull/status and diagnostic code can call `store.loadAll(worldId)` or `store.file(world, owner)` directly. For example, `new SelectionMetadataStore(config.selectionsRoot()).loadAll(world.id())` returns every player's selections without needing a player UUID.
 
 Machine-local selection state. This is intentionally stored outside the
 repository: it records absolute world coordinates, owners, and the current
@@ -28,9 +28,9 @@ origin, none of which belong in a shared commit.
 
 ## Fields
 
-- `FORMAT_VERSION` (`int`) — TODO: describe field
-- `root` (`Path`) — TODO: describe field
-- `gson` (`Gson`) — TODO: describe field
+- `FORMAT_VERSION` (`int`) — Current on-disk schema marker, written as the `format` property of every file (currently `1`); readers do not branch on it yet, but it reserves a migration hook.
+- `root` (`Path`) — Absolute, normalized root directory; per-world subdirectories are created beneath it on first save.
+- `gson` (`Gson`) — Pretty-printing Gson with HTML escaping disabled, used for both the wrapper object and the selections array.
 
 ---
 
@@ -42,12 +42,12 @@ public SelectionMetadataStore(Path root)
 ```
 
 ### Description
-TODO: Describe what `SelectionMetadataStore` does.
+Normalizes `root` to an absolute path and creates the JSON codec; it performs no IO and does not create directories until `save` is called.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `root` | `Path` | TODO: describe |
+| `root` | `Path` | Directory that holds one subdirectory per sanitized world id; must not be null. |
 
 ### Returns
 `SelectionMetadataStore` instance.
@@ -62,16 +62,16 @@ public Path file(String world, UUID owner)
 ```
 
 ### Description
-TODO: Describe what `file` does.
+Maps a world and owner to `root/<safeWorldName(world)>/<owner>.json`, applying `Names.safeWorldName` to keep filesystem-hostile ids out of the path. The parent directory is not created here.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
+| `world` | `String` | World id, sanitized with `Names.safeWorldName`. |
+| `owner` | `UUID` | Player UUID, used verbatim as the JSON file name. |
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — target JSON file; it may not exist yet.
 
 ---
 
@@ -83,16 +83,16 @@ public List<Selection> load(String world, UUID owner)
 ```
 
 ### Description
-TODO: Describe what `load` does.
+Reads the player's file through `loadFile`, using the world id as the fallback world and an empty owner-name fallback; a missing file yields an empty list.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
+| `world` | `String` | World id applied to selections that lack a world. |
+| `owner` | `UUID` | Owner UUID applied to selections that lack an owner. |
 
 ### Returns
-`List<Selection>` — TODO: describe return value.
+`List<Selection>` — normalized selections, or an empty list when the file is absent.
 
 ---
 
@@ -104,18 +104,18 @@ public List<Selection> loadFile(Path file, String world, UUID fallbackOwner, Str
 ```
 
 ### Description
-TODO: Describe what `loadFile` does.
+Parses the wrapper object, treats a missing `selections` array as empty, normalizes each non-null entry, and returns a mutable `ArrayList`. Invalid JSON raises a `SelectionException` telling the player to delete the file, while IO errors report the path and cause.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `file` | `Path` | TODO: describe |
-| `world` | `String` | TODO: describe |
-| `fallbackOwner` | `UUID` | TODO: describe |
-| `fallbackOwnerName` | `String` | TODO: describe |
+| `file` | `Path` | JSON file to parse, usually obtained from `file()`. |
+| `world` | `String` | World id applied to selections that lack a world. |
+| `fallbackOwner` | `UUID` | Owner UUID applied to selections that lack an owner. |
+| `fallbackOwnerName` | `String` | Display name applied to selections that lack an owner name. |
 
 ### Returns
-`List<Selection>` — TODO: describe return value.
+`List<Selection>` — mutable list of normalized selections; empty when the file is absent.
 
 ---
 
@@ -132,10 +132,10 @@ All players' selections in a world. Used by status/pull for console contexts.
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
+| `world` | `String` | World id whose per-player files should be aggregated. |
 
 ### Returns
-`List<Selection>` — TODO: describe return value.
+`List<Selection>` — every owner's selections sorted by name; empty when the world directory is absent.
 
 ---
 
@@ -147,15 +147,15 @@ public void save(String world, UUID owner, String ownerName, List<Selection> sel
 ```
 
 ### Description
-TODO: Describe what `save` does.
+Creates the world directory, builds the wrapper with `format`, `world`, `owner`, `ownerName` and `selections`, writes it to a `.tmp` sibling, then atomically moves it over the target. Any IO failure is wrapped in `SelectionException`, and the previous file survives a failure before the move.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
-| `ownerName` | `String` | TODO: describe |
-| `selections` | `List<Selection>` | TODO: describe |
+| `world` | `String` | World id recorded in the wrapper and used for the directory. |
+| `owner` | `UUID` | Owner UUID recorded in the wrapper and used for the file name. |
+| `ownerName` | `String` | Player name recorded for display; null becomes an empty string. |
+| `selections` | `List<Selection>` | Selections serialized into the `selections` array in the given order. |
 
 ### Returns
 `void`
@@ -170,15 +170,15 @@ private static UUID ownerFromFileName(Path file)
 ```
 
 ### Description
-TODO: Describe what `ownerFromFileName` does.
+Extracts the UUID from a `<uuid>.json` file name, returning the all-zero UUID when the stem is not a valid UUID so a stray file cannot abort a `loadAll` scan.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `file` | `Path` | TODO: describe |
+| `file` | `Path` | File whose name supplies the owner UUID. |
 
 ### Returns
-`UUID` — TODO: describe return value.
+`UUID` — the parsed owner, or the all-zero UUID when the name is malformed.
 
 ---
 

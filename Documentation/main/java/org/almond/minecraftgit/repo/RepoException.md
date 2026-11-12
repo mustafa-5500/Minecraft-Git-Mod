@@ -11,10 +11,16 @@
 
 ## Usage
 
-TODO: Add usage examples for `RepoException`.
+Thrown by the repository layer when an operation fails in a way the player can fix — a missing repository, an invalid remote URL, corrupt metadata — with a message written for chat. `CommandSupport.handleError` recognises the `UserFacingException` base type and prints `getMessage()` directly, while the attached JGit cause is only used for debug logging.
+
+```java
+if (!repo.isInitialized()) {
+    throw new RepoException("No Git repository exists at " + repo.path() + ". Run /git init first.");
+}
+```
 
 A repository operation failed in a way the user can act on. Commands show
-{@link #getMessage()} directly; the JGit cause is kept for debug logs.
+`.getMessage()` directly; the JGit cause is kept for debug logs.
 
 ---
 
@@ -26,12 +32,12 @@ public RepoException(String message)
 ```
 
 ### Description
-TODO: Describe what `RepoException` does.
+Creates a user-facing repository failure with no underlying cause, for cases where the mod knows exactly what went wrong (e.g. "Remote URL must not be blank."). The message is displayed verbatim in chat, so it is written as a complete sentence.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | Complete, player-facing description of the failure and, where possible, the action to take. |
 
 ### Returns
 `RepoException` instance.
@@ -46,13 +52,13 @@ public RepoException(String message, Throwable cause)
 ```
 
 ### Description
-TODO: Describe what `RepoException` does.
+Wraps a lower-level failure (typically `IOException` or a JGit `GitAPIException`) while keeping the friendly message on top. The cause is preserved for debug logs and stack traces but is not shown to the player.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
-| `cause` | `Throwable` | TODO: describe |
+| `message` | `String` | Player-facing summary that hides JGit internals. |
+| `cause` | `Throwable` | Original failure, retained for diagnostics. |
 
 ### Returns
 `RepoException` instance.
