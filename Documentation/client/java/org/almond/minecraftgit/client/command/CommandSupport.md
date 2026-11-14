@@ -20,7 +20,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `CommandSupport`.
+`CommandSupport` is a stateless utility used by every `/git` handler; it is never instantiated. Synchronous command bodies are wrapped in `CommandSupport.run(source, () -> ...)` or `CommandSupport.runInt(source, () -> ...)`, while asynchronous work such as `/git add` or `/git commit` is started with `CommandSupport.complete(services, source, task, success)` so its result is delivered back on the client thread. Failures thrown inside these wrappers become one chat line via `handleError`, which is why handlers can simply throw `UserFacingException` or `SelectionException`.
 
 Shared plumbing for client commands: player checks, one-line error handling,
 and returning async results to the client thread.
@@ -35,7 +35,7 @@ private CommandSupport()
 ```
 
 ### Description
-TODO: Describe what `CommandSupport` does.
+Private no-argument constructor; `CommandSupport` is a static-only plumbing class and cannot be instantiated.
 
 ### Parameters
 None.
@@ -53,15 +53,15 @@ public static FabricClientCommandSource requirePlayer(FabricClientCommandSource 
 ```
 
 ### Description
-TODO: Describe what `requirePlayer` does.
+Checks that the command source belongs to a player and returns it unchanged. If `source.getPlayer()` is `null` (a console or other non-player context), it throws a `UserFacingException` with the message `That command can only be run by a player.`
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
+| `source` | `FabricClientCommandSource` | client command source to validate |
 
 ### Returns
-`FabricClientCommandSource` — TODO: describe return value.
+`FabricClientCommandSource` — the same source, guaranteed to have a non-null player.
 
 ---
 
@@ -73,16 +73,16 @@ public static int run(FabricClientCommandSource source, Runnable action)
 ```
 
 ### Description
-TODO: Describe what `run` does.
+Runs a synchronous command action and converts any thrown error into chat feedback. Returns `1` on success and `0` after a failure, following the Brigadier integer convention; the exception is not rethrown.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `action` | `Runnable` | TODO: describe |
+| `source` | `FabricClientCommandSource` | source used to report errors |
+| `action` | `Runnable` | command body executed on the calling (client) thread |
 
 ### Returns
-`int` — TODO: describe return value.
+`int` — `1` if the action completed, `0` if it threw.
 
 ---
 
@@ -94,16 +94,16 @@ public static int runInt(FabricClientCommandSource source, Supplier<Integer> act
 ```
 
 ### Description
-TODO: Describe what `runInt` does.
+Runs a synchronous command action that supplies a Brigadier return code, reporting any thrown error through `handleError`. The supplier's value is returned unchanged on success; otherwise the result is `0`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `action` | `Supplier<Integer>` | TODO: describe |
+| `source` | `FabricClientCommandSource` | source used to report errors |
+| `action` | `Supplier<Integer>` | command body producing a Brigadier result code |
 
 ### Returns
-`int` — TODO: describe return value.
+`int` — the supplier's return code, or `0` if it threw.
 
 ---
 
@@ -116,20 +116,20 @@ public static <T> void complete(GitServices services, FabricClientCommandSource 
 ```
 
 ### Description
-Run a blocking task on the IO executor, then invoke {@code success} on the
+Run a blocking task on the IO executor, then invoke `success` on the
 client thread. If the player left the world while the task was running,
 the result is silently dropped.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `task` | `Supplier<T>` | TODO: describe |
-| `success` | `Consumer<T>` | TODO: describe |
+| `services` | [`GitServices`](../GitServices.md) | service graph whose IO executor runs the task |
+| `source` | `FabricClientCommandSource` | source for chat feedback/errors; its client schedules the callback |
+| `task` | `Supplier<T>` | blocking operation executed on the IO pool; may throw |
+| `success` | `Consumer<T>` | result handler invoked on the client thread |
 
 ### Returns
-`<T> void` — TODO: describe return value.
+`<T> void` — returns immediately; the result is delivered asynchronously. If the player left the world before the task finished, nothing is shown.
 
 ---
 
@@ -147,12 +147,12 @@ Deliver an already-running future's result on the client thread.
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `future` | `CompletableFuture<T>` | TODO: describe |
-| `success` | `Consumer<T>` | TODO: describe |
+| `source` | `FabricClientCommandSource` | source for chat feedback/errors; its client schedules the callback |
+| `future` | `CompletableFuture<T>` | already-running operation whose result should be shown |
+| `success` | `Consumer<T>` | result handler invoked on the client thread |
 
 ### Returns
-`<T> void` — TODO: describe return value.
+`<T> void` — returns immediately; the result or error is delivered later on the client thread and is dropped if the player has left the world.
 
 ---
 
@@ -164,13 +164,13 @@ public static void handleError(FabricClientCommandSource source, Throwable error
 ```
 
 ### Description
-TODO: Describe what `handleError` does.
+Reports a command failure as a single chat error instead of letting it escape. `UserFacingException` and `IllegalArgumentException` messages are echoed verbatim; any other throwable is logged to `MinecraftGit.LOGGER` and shown as `Git operation failed: <message> (see the game log for details)`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `error` | `Throwable` | TODO: describe |
+| `source` | `FabricClientCommandSource` | source that receives the error message |
+| `error` | `Throwable` | failure to report, possibly wrapped in a completion exception |
 
 ### Returns
 `void`
@@ -185,15 +185,15 @@ public static Throwable unwrap(Throwable error)
 ```
 
 ### Description
-TODO: Describe what `unwrap` does.
+Removes `CompletionException` and `ExecutionException` wrappers by repeatedly walking to the cause. This exposes the original service exception so `handleError` can decide whether it is user-facing; an already-unwrapped throwable is returned as-is.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `error` | `Throwable` | TODO: describe |
+| `error` | `Throwable` | throwable captured from a future or command body |
 
 ### Returns
-`Throwable` — TODO: describe return value.
+`Throwable` — the first non-wrapper cause, or `error` itself when it is not wrapped.
 
 ---
 
@@ -205,16 +205,16 @@ public static String join(String[] args, int from)
 ```
 
 ### Description
-TODO: Describe what `join` does.
+Rebuilds a space-separated string from command arguments starting at index `from`; available to handlers that need to reconstruct message text from an argument array. Returns the empty string when `from` is at or past `args.length`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `args` | `String[]` | TODO: describe |
-| `from` | `int` | TODO: describe |
+| `args` | `String[]` | raw command arguments |
+| `from` | `int` | zero-based index of the first argument to include |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — the joined arguments, or the empty string when the range is empty.
 
 ---
 
@@ -226,15 +226,15 @@ public static String lower(String value)
 ```
 
 ### Description
-TODO: Describe what `lower` does.
+Null-safe lower-case helper for normalizing names and ids, using `Locale.ROOT` so locale-specific rules cannot alter matching. A `null` value becomes the empty string.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `String` | TODO: describe |
+| `value` | `String` | text to normalize; may be `null` |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — lower-cased text, or the empty string when `value` is `null`.
 
 ---
 

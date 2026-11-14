@@ -21,7 +21,7 @@
 
 ## Usage
 
-TODO: Describe how `Messages` is instantiated and used.
+Owned by `GitServices` and reached through `services.messages()`, so every command shares one formatter and one prefix. The wand and renderer code build their own `Component` instances because they often bypass a command source (`displayClientMessage`, system messages), so this class intentionally covers only command feedback.
 
 ---
 
@@ -47,11 +47,11 @@ import java.util.Locale;
 
 | Import | Purpose |
 |--------|---------|
-| `ChatFormatting` | TODO: describe purpose |
-| `Component` | TODO: describe purpose |
-| `FabricClientCommandSource` | TODO: describe purpose |
-| [`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | TODO: describe purpose |
-| `Locale` | TODO: describe purpose |
+| `ChatFormatting` | Provides `DARK_AQUA` for the prefix and `GRAY`, `GREEN`, `YELLOW` and `RED` for the bodies. |
+| `Component` | Chat component type accepted by the command source and built by every method. |
+| `FabricClientCommandSource` | Client command source whose `sendFeedback` and `sendError` methods deliver the message to the player. |
+| [`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | Read for the `prefix` string; nothing else in the config is used. |
+| `Locale` | Supplies `Locale.ROOT` so `format` is locale-independent. |
 
 ---
 
@@ -72,7 +72,7 @@ private final ModConfig config;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `config` | [`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | TODO: describe |
+| `config` | [`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | Only `prefix` is consulted, each time `prefix()` runs, so the config remains the single source of truth for the chat prefix. |
 
 ---
 
@@ -82,7 +82,7 @@ private final ModConfig config;
 public Messages(ModConfig config)
 ```
 
-TODO: Provide detailed design explanation for `Messages`.
+Stores the config reference and nothing else; no components are pre-built, so a prefix change takes effect immediately. `GitServices` constructs exactly one instance per service graph.
 
 ---
 
@@ -92,7 +92,7 @@ TODO: Provide detailed design explanation for `Messages`.
 private Component prefix()
 ```
 
-TODO: Provide detailed design explanation for `prefix`.
+Returns `Component.literal(config.prefix == null ? "" : config.prefix)` styled `DARK_AQUA`. Every caller invokes `prefix().copy()` before appending, so the returned component is never mutated in place.
 
 ---
 
@@ -102,7 +102,7 @@ TODO: Provide detailed design explanation for `prefix`.
 public void send(FabricClientCommandSource source, String message)
 ```
 
-TODO: Provide detailed design explanation for `send`.
+Appends a `GRAY` literal body to a copy of the prefix and calls `source.sendFeedback`; the player sees the prefix immediately followed by the message. No formatting codes in `message` are interpreted.
 
 ---
 
@@ -112,7 +112,7 @@ TODO: Provide detailed design explanation for `send`.
 public void success(FabricClientCommandSource source, String message)
 ```
 
-TODO: Provide detailed design explanation for `success`.
+Same as `send` with `GREEN` styling, marking an operation that succeeded.
 
 ---
 
@@ -122,7 +122,7 @@ TODO: Provide detailed design explanation for `success`.
 public void warn(FabricClientCommandSource source, String message)
 ```
 
-TODO: Provide detailed design explanation for `warn`.
+Same as `send` with `YELLOW` styling for advisory output such as the multiplayer wand caveat.
 
 ---
 
@@ -132,7 +132,7 @@ TODO: Provide detailed design explanation for `warn`.
 public void error(FabricClientCommandSource source, String message)
 ```
 
-TODO: Provide detailed design explanation for `error`.
+The only variant that calls `source.sendError`; the message is red and reported through the error channel, with the prefix still included.
 
 ---
 
@@ -142,7 +142,7 @@ TODO: Provide detailed design explanation for `error`.
 public void raw(FabricClientCommandSource source, String message)
 ```
 
-TODO: Provide detailed design explanation for `raw`.
+Sends an unprefixed `GRAY` literal through `sendFeedback`; used for headers and row output so the caller controls indentation.
 
 ---
 
@@ -152,6 +152,6 @@ TODO: Provide detailed design explanation for `raw`.
 public void format(FabricClientCommandSource source, String format, Object... args)
 ```
 
-TODO: Provide detailed design explanation for `format`.
+Delegates to `send` after `String.format(Locale.ROOT, format, args)`, so every formatted message inherits the prefix and grey styling; a malformed pattern throws `IllegalFormatException` to the caller.
 
 ---

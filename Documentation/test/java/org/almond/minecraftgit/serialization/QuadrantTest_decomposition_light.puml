@@ -1,0 +1,132 @@
+@startuml
+
+'
+' Light theme
+'
+
+'
+' Colors
+'
+!$color_bg = "#FFFFFF"
+!$color_fg = "#000000"
+!$color_arrow = "#6b7280"
+
+!$color_primary = "#333333"
+!$color_sydd_bg = "#f0f7ff"
+!$color_sydd_border = "#a9baccff"
+!$color_sydd_main_border = "#2b6cb0"
+
+!$color_srs_bg = "#fffbea"
+!$color_srs_border = "#b7791f"
+
+!$color_component_bg = "#e2e8f0"
+!$color_component_border = "#4a5568"
+!$color_external_component_bg = "#8eb2c0"
+!$color_external_component_border = "#355360"
+
+skinparam {
+  BackgroundColor $color_bg
+
+  DefaultFontName "Segoe UI"
+  DefaultFontColor $color_fg
+
+  ArrowColor $color_arrow
+  ArrowFontSize 10
+  ArrowFontStyle bold
+
+  RectangleBackgroundColor $color_bg
+  RectangleBorderColor $color_primary
+  RectangleBorderThickness 2
+
+  ComponentBackgroundColor $color_sydd_bg
+  ComponentBorderColor $color_sydd_main_border
+  ComponentBorderThickness 2
+
+  ComponentStereotypeFontColor $color_fg
+  Shadowing false
+}
+
+skinparam rectangle<<ZC>> {
+  BackgroundColor $color_bg
+  BorderColor $color_primary
+  BorderThickness 2
+}
+
+skinparam rectangle<<SyDD>> {
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+skinparam rectangle<<SyDDMain>> {
+  FontStyle plain
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_main_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRS>> {
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRSMain>> {
+  FontStyle plain
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam component<<External>> {
+  BackgroundColor $color_external_component_bg
+  BorderColor $color_external_component_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #dbeafe
+  BorderColor #2b6cb0
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #eff6ff
+  BorderColor #5b7fb6
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #f8fbff
+  BorderColor #6b8bbd
+  BorderThickness 1
+}
+
+hide stereotype
+left to right direction
+title Function Call Decomposition: test/java/org/almond/minecraftgit/serialization/QuadrantTest.java
+skinparam packageStyle rectangle
+
+rectangle "QuadrantTest.java" <<FileLevel>> as file_QuadrantTest {
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_QuadrantTest {
+    component "QuadrantTest.java::<b>mapsRelativeCoordinatesToQuadrants()</b>" <<FunctionLevel>> as m_1
+    component "QuadrantTest.java::<b>rowAndColumnMappingGrowsAwayFromOrigin()</b>" <<FunctionLevel>> as m_2
+  }
+}
+
+cloud "columnForZ()" as ext_5
+cloud "columnToZ()" as ext_3
+cloud "fromOffsets()" as ext_1
+cloud "rowForX()" as ext_4
+cloud "rowToX()" as ext_2
+
+m_1 --> ext_1
+m_2 --> ext_2
+m_2 --> ext_3
+m_2 --> ext_4
+m_2 --> ext_5
+@enduml

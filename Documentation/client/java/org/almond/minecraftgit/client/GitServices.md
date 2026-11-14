@@ -33,7 +33,7 @@ The top level service controlling
 
 ## Usage
 
-TODO: Add usage examples for `GitServices`.
+Constructed once by the client entrypoint as `new GitServices(root, config, debug)` and published through `MinecraftGitClient.services()`; commands, wand callbacks and the renderer resolve their collaborators through that single instance. For example, `services.async(() -> services.selections().list(world.id(), player.getUUID()))` performs the disk-backed selection read on the shared daemon IO pool while the render thread stays free. Do not construct a second graph: each instance owns its own executor and repository handles, and `close()` is only called from the client-stopping hook.
 
 Service graph for the client mod. Repository, selection, staging and commit
 services are added here as phases land; the IO executor is created once so
@@ -43,21 +43,21 @@ JGit work never runs on the render thread.
 
 ## Fields
 
-- `root` (`Path`) — TODO: describe field
-- `config` ([`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md)) — TODO: describe field
-- `debug` ([`DebugLogger`](../../../../../../main/java/org/almond/minecraftgit/debug/DebugLogger.md)) — TODO: describe field
-- `messages` ([`Messages`](Messages.md)) — TODO: describe field
-- `repos` ([`RepoManager`](../../../../../../main/java/org/almond/minecraftgit/repo/RepoManager.md)) — TODO: describe field
-- `selections` ([`SelectionService`](../../../../../../main/java/org/almond/minecraftgit/selection/SelectionService.md)) — TODO: describe field
-- `selectionManager` ([`SelectionManager`](selection/SelectionManager.md)) — TODO: describe field
-- `snapshots` ([`SnapshotService`](../../../../../../main/java/org/almond/minecraftgit/world/SnapshotService.md)) — TODO: describe field
-- `staging` ([`StagingService`](../../../../../../main/java/org/almond/minecraftgit/staging/StagingService.md)) — TODO: describe field
-- `commits` ([`CommitService`](../../../../../../main/java/org/almond/minecraftgit/commit/CommitService.md)) — TODO: describe field
-- `status` ([`StatusService`](../../../../../../main/java/org/almond/minecraftgit/status/StatusService.md)) — TODO: describe field
-- `backups` ([`BackupService`](../../../../../../main/java/org/almond/minecraftgit/backup/BackupService.md)) — TODO: describe field
-- `pull` ([`PullService`](../../../../../../main/java/org/almond/minecraftgit/sync/PullService.md)) — TODO: describe field
-- `apply` ([`ApplyService`](world/ApplyService.md)) — TODO: describe field
-- `io` (`ExecutorService`) — TODO: describe field
+- `root` (`Path`) — Normalized absolute data root (`<config dir>/minecraftgit` by default); every service path is derived from `config` beneath it. Immutable for the lifetime of the graph.
+- `config` ([`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md)) — The loaded `ModConfig` shared by every service; supplies data roots, caps, wand item, chat prefix and render budget. Read-mostly after construction, though flags such as `renderSelections` are honoured live.
+- `debug` ([`DebugLogger`](../../../../../../main/java/org/almond/minecraftgit/debug/DebugLogger.md)) — Session `DebugLogger` writing under `config.logsRoot()`; closed by `close()` after the repository manager.
+- `messages` ([`Messages`](Messages.md)) — Chat formatter built from the same config, so command feedback uses `config.prefix`.
+- `repos` ([`RepoManager`](../../../../../../main/java/org/almond/minecraftgit/repo/RepoManager.md)) — Per-world-id `RepoManager` owning JGit handles and local repo metadata; closed first in `close()`.
+- `selections` ([`SelectionService`](../../../../../../main/java/org/almond/minecraftgit/selection/SelectionService.md)) — Durable per-world and per-player selection list; `selectionManager` layers transient wand state on top of it.
+- `selectionManager` ([`SelectionManager`](selection/SelectionManager.md)) — Per-player session state: the two corners, the pending cuboid and the remembered active selection name.
+- `snapshots` ([`SnapshotService`](../../../../../../main/java/org/almond/minecraftgit/world/SnapshotService.md)) — Snapshot capture service for blocks, block entities and entities; world capture feeds staging and `ApplyService` reuses it when restoring.
+- `staging` ([`StagingService`](../../../../../../main/java/org/almond/minecraftgit/staging/StagingService.md)) — Staging area rooted at `config.stagingRoot()` over a fresh `SnapshotStore`, recording which snapshots are staged per world and player.
+- `commits` ([`CommitService`](../../../../../../main/java/org/almond/minecraftgit/commit/CommitService.md)) — Commit service wired to `repos`, `staging`, config, logger and `modVersion()`; turns staged snapshots into JGit commits.
+- `status` ([`StatusService`](../../../../../../main/java/org/almond/minecraftgit/status/StatusService.md)) — Status and diff service over `repos` and `staging`, used by `/git status` and `/git diff`.
+- `backups` ([`BackupService`](../../../../../../main/java/org/almond/minecraftgit/backup/BackupService.md)) — Backup archive manager under `config.backupsRoot()`, pruning to `config.maxBackups`.
+- `pull` ([`PullService`](../../../../../../main/java/org/almond/minecraftgit/sync/PullService.md)) — Pull and import service using `config.tmpRoot()` for downloaded temporary trees.
+- `apply` ([`ApplyService`](world/ApplyService.md)) — World apply service that replays an `ApplyPlan` through the integrated server in tick batches; shares the daemon IO pool.
+- `io` (`ExecutorService`) — Fixed pool of two daemon `minecraftgit-io` threads created in the constructor; the only executor for JGit and file IO. Shut down by `close()`.
 
 ---
 
@@ -74,9 +74,9 @@ The constructor function, taking the root of the Repository, the Configuration, 
 ### Parameters
 | Name     | Type                                                                                      | Description    |
 | -------- | ----------------------------------------------------------------------------------------- | -------------- |
-| `root`   | `Path`                                                                                    | TODO: describe |
-| `config` | [`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md)    | TODO: describe |
-| `debug`  | [`DebugLogger`](../../../../../../main/java/org/almond/minecraftgit/debug/DebugLogger.md) | TODO: describe |
+| `root`   | `Path`                                                                                    | Mod data root (normally `<config dir>/minecraftgit`); normalized to an absolute path and used as the base for all service paths. |
+| `config` | [`ModConfig`](../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md)    | Loaded `ModConfig` providing data roots, caps, wand item, prefix and render budget. |
+| `debug`  | [`DebugLogger`](../../../../../../main/java/org/almond/minecraftgit/debug/DebugLogger.md) | Session `DebugLogger` used by the repository, snapshot, staging, status and apply services. |
 
 ### Returns
 `GitServices` instance.
@@ -145,13 +145,13 @@ public Messages messages()
 ```
 
 ### Description
-.
+Returns the `Messages` formatter created at construction, which every command uses for prefixed chat output.
 
 ### Parameters
 None.
 
 ### Returns
-[`Messages`](Messages.md) — TODO: describe return value.
+[`Messages`](Messages.md) — the shared chat formatter for this service graph.
 
 ---
 
@@ -163,13 +163,13 @@ public RepoManager repos()
 ```
 
 ### Description
-TODO: Describe what `repos` does.
+Returns the `RepoManager` for this client session, which lazily creates one `RepoService` and its metadata per world id.
 
 ### Parameters
 None.
 
 ### Returns
-[`RepoManager`](../../../../../../main/java/org/almond/minecraftgit/repo/RepoManager.md) — TODO: describe return value.
+[`RepoManager`](../../../../../../main/java/org/almond/minecraftgit/repo/RepoManager.md) — owner of per-world repository handles and local metadata; closed by `close()`.
 
 ---
 
@@ -181,13 +181,13 @@ public SelectionService selections()
 ```
 
 ### Description
-TODO: Describe what `selections` does.
+Returns the durable `SelectionService` that loads, mutates and persists named selections per world id and player.
 
 ### Parameters
 None.
 
 ### Returns
-[`SelectionService`](../../../../../../main/java/org/almond/minecraftgit/selection/SelectionService.md) — TODO: describe return value.
+[`SelectionService`](../../../../../../main/java/org/almond/minecraftgit/selection/SelectionService.md) — the selection store rooted at `config.selectionsRoot()`.
 
 ---
 
@@ -199,13 +199,13 @@ public SelectionManager selectionManager()
 ```
 
 ### Description
-TODO: Describe what `selectionManager` does.
+Returns the per-player wand session manager that tracks both corners, the pending cuboid and the remembered active selection name.
 
 ### Parameters
 None.
 
 ### Returns
-[`SelectionManager`](selection/SelectionManager.md) — TODO: describe return value.
+[`SelectionManager`](selection/SelectionManager.md) — wand and corner state layered over `selections()` and `repos()`.
 
 ---
 
@@ -217,13 +217,13 @@ public SnapshotService snapshots()
 ```
 
 ### Description
-TODO: Describe what `snapshots` does.
+Returns the `SnapshotService` that reads blocks, block entities and entities from the current level; callers run it on the thread that owns that level.
 
 ### Parameters
 None.
 
 ### Returns
-[`SnapshotService`](../../../../../../main/java/org/almond/minecraftgit/world/SnapshotService.md) — TODO: describe return value.
+[`SnapshotService`](../../../../../../main/java/org/almond/minecraftgit/world/SnapshotService.md) — snapshot capture and restore entry point.
 
 ---
 
@@ -235,13 +235,13 @@ public StagingService staging()
 ```
 
 ### Description
-TODO: Describe what `staging` does.
+Returns the `StagingService` rooted at `config.stagingRoot()`; it records which snapshot ids are staged for a world and player.
 
 ### Parameters
 None.
 
 ### Returns
-[`StagingService`](../../../../../../main/java/org/almond/minecraftgit/staging/StagingService.md) — TODO: describe return value.
+[`StagingService`](../../../../../../main/java/org/almond/minecraftgit/staging/StagingService.md) — staging area over the `SnapshotStore` created at construction.
 
 ---
 
@@ -253,13 +253,13 @@ public CommitService commits()
 ```
 
 ### Description
-TODO: Describe what `commits` does.
+Returns the `CommitService` wired to the repository manager, staging service, config, debug logger and `modVersion()`.
 
 ### Parameters
 None.
 
 ### Returns
-[`CommitService`](../../../../../../main/java/org/almond/minecraftgit/commit/CommitService.md) — TODO: describe return value.
+[`CommitService`](../../../../../../main/java/org/almond/minecraftgit/commit/CommitService.md) — creates commits from staged snapshots.
 
 ---
 
@@ -271,13 +271,13 @@ public StatusService status()
 ```
 
 ### Description
-TODO: Describe what `status` does.
+Returns the `StatusService` that computes working-tree status and diffs from repository and staging state.
 
 ### Parameters
 None.
 
 ### Returns
-[`StatusService`](../../../../../../main/java/org/almond/minecraftgit/status/StatusService.md) — TODO: describe return value.
+[`StatusService`](../../../../../../main/java/org/almond/minecraftgit/status/StatusService.md) — status and diff reporting for a world repository.
 
 ---
 
@@ -289,13 +289,13 @@ public BackupService backups()
 ```
 
 ### Description
-TODO: Describe what `backups` does.
+Returns the `BackupService` that archives the world before an apply and prunes older archives to `config.maxBackups`.
 
 ### Parameters
 None.
 
 ### Returns
-[`BackupService`](../../../../../../main/java/org/almond/minecraftgit/backup/BackupService.md) — TODO: describe return value.
+[`BackupService`](../../../../../../main/java/org/almond/minecraftgit/backup/BackupService.md) — backup archive manager rooted at `config.backupsRoot()`.
 
 ---
 
@@ -307,13 +307,13 @@ public PullService pull()
 ```
 
 ### Description
-TODO: Describe what `pull` does.
+Returns the `PullService` that fetches remote content into `config.tmpRoot()` before it is inspected or applied.
 
 ### Parameters
 None.
 
 ### Returns
-[`PullService`](../../../../../../main/java/org/almond/minecraftgit/sync/PullService.md) — TODO: describe return value.
+[`PullService`](../../../../../../main/java/org/almond/minecraftgit/sync/PullService.md) — pull and import helper using the configured temporary directory.
 
 ---
 
@@ -325,13 +325,13 @@ public ApplyService apply()
 ```
 
 ### Description
-TODO: Describe what `apply` does.
+Returns the `ApplyService` that replays an `ApplyPlan` through the integrated server in tick batches; it is single-player only and shares the IO pool for snapshot work.
 
 ### Parameters
 None.
 
 ### Returns
-[`ApplyService`](world/ApplyService.md) — TODO: describe return value.
+[`ApplyService`](world/ApplyService.md) — apply orchestration bound to snapshots, backups, config, logger and the IO executor.
 
 ---
 
@@ -343,13 +343,13 @@ public static String modVersion()
 ```
 
 ### Description
-TODO: Describe what `modVersion` does.
+Reads the mod's friendly version string from the Fabric loader, returning `development` when the mod container is absent (plain-JVM tests) or the loader throws.
 
 ### Parameters
 None.
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — the resolved mod version, or `development`; never null.
 
 ---
 
@@ -361,13 +361,13 @@ public ExecutorService io()
 ```
 
 ### Description
-TODO: Describe what `io` does.
+Returns the shared two-thread daemon executor (`minecraftgit-io`) created in the constructor and used for all JGit and filesystem work. Exposed for services such as `ApplyService` that schedule their own work; do not shut it down independently.
 
 ### Parameters
 None.
 
 ### Returns
-`ExecutorService` — TODO: describe return value.
+`ExecutorService` — the live IO pool, owned and shut down by `close()`.
 
 ---
 
@@ -379,15 +379,15 @@ public <T> CompletableFuture<T> async(Supplier<T> task)
 ```
 
 ### Description
-TODO: Describe what `async` does.
+Schedules a value-producing task on the IO pool and returns a future completed when it finishes; a thrown exception completes the future exceptionally. The task runs off the render thread and must not touch Minecraft world state directly.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `task` | `Supplier<T>` | TODO: describe |
+| `task` | `Supplier<T>` | Task to run on the IO pool. |
 
 ### Returns
-`<T> CompletableFuture<T>` — TODO: describe return value.
+`<T> CompletableFuture<T>` — result of `task`, completed on an IO thread or completed exceptionally if it throws.
 
 ---
 
@@ -399,15 +399,15 @@ public CompletableFuture<Void> asyncRun(Runnable task)
 ```
 
 ### Description
-TODO: Describe what `asyncRun` does.
+Schedules a fire-and-forget `Runnable` on the IO pool, used for cleanup such as discarding a pulled temporary directory. Failures are captured in the returned future rather than logged automatically.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `task` | `Runnable` | TODO: describe |
+| `task` | `Runnable` | Work to run on the IO pool. |
 
 ### Returns
-`CompletableFuture<Void>` — TODO: describe return value.
+`CompletableFuture<Void>` — completes when `task` finishes, or exceptionally when it throws.
 
 ---
 
@@ -420,7 +420,7 @@ public void close()
 ```
 
 ### Description
-TODO: Describe what `close` does.
+Shuts the graph down in order: closes the repository manager (releasing every `RepoService`), closes the debug logger, then shuts the IO pool down and waits up to two seconds before forcing `shutdownNow`. A thread interrupt during that wait also forces `shutdownNow` and restores the interrupt flag, so it is safe to call from the `CLIENT_STOPPING` hook.
 
 ### Parameters
 None.

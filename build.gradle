@@ -146,3 +146,32 @@ tasks.register('documentation', Exec) {
 
     commandLine(['python', *scriptArgs]) 
 }
+
+// ---------------------------------------------------------------------------
+// Decomposition Diagrams
+// ---------------------------------------------------------------------------
+tasks.register('decomp', Exec) {
+    group = 'documentation'
+    description = "Create or Update the decomposition diagram files (Documentation/)"
+    workingDir = projectDir
+
+    def scriptArgs = ["${projectDir}/Utils/decomposition-generator/generate_decomp.py"]
+    scriptArgs += "${projectDir}/src"
+    scriptArgs += "${projectDir}/Documentation"
+
+    commandLine(['python', *scriptArgs]) 
+}
+
+// ---------------------------------------------------------------------------
+// Render Decomposition Diagrams
+// ---------------------------------------------------------------------------
+tasks.register('renderDecomp', Exec) {
+    group = 'documentation'
+    description = "Create or Update the decomposition diagram files (Documentation/)"
+    workingDir = projectDir
+
+    def scriptArgs = ["${projectDir}/Utils/decomposition-generator/render_decomp_png.py"]
+    scriptArgs += "${projectDir}/Documentation"
+
+    commandLine(['python', *scriptArgs]) 
+}

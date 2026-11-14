@@ -14,7 +14,7 @@
 
 ## Usage
 
-TODO: Describe how `CommitException` is instantiated and used.
+It is thrown by `CommitService.commit` for validation and IO wrapping, and surfaces through `CommitCommands` as a `UserFacingException` whose message is shown in chat. It is an unchecked control-flow signal, not a data carrier, and the commit service never catches it itself.
 
 ---
 
@@ -36,7 +36,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 
 | Import | Purpose |
 |--------|---------|
-| [`UserFacingException`](../util/UserFacingException.md) | TODO: describe purpose |
+| [`UserFacingException`](../util/UserFacingException.md) | Base runtime exception marking messages that are safe to display to the player. |
 
 ---
 
@@ -46,7 +46,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 public final class CommitException extends UserFacingException {
 ```
 
-- **`extends UserFacingException`** — TODO: explain inheritance.
+- **`extends UserFacingException`** — `UserFacingException` extends `RuntimeException`, so the commit failure is unchecked; the command layer catches this base type and prints `getMessage()` without a stack trace.
 
 ---
 
@@ -56,7 +56,7 @@ public final class CommitException extends UserFacingException {
 public CommitException(String message)
 ```
 
-TODO: Provide detailed design explanation for `CommitException`.
+Delegates to `UserFacingException(String)`, which stores the message; with no cause, it represents a validation failure such as missing staged data.
 
 ---
 
@@ -66,6 +66,6 @@ TODO: Provide detailed design explanation for `CommitException`.
 public CommitException(String message, Throwable cause)
 ```
 
-TODO: Provide detailed design explanation for `CommitException`.
+Delegates to `UserFacingException(String, Throwable)` so the original cause is available for logs while chat shows only the message; used when wrapping `IOException` from temporary-tree construction.
 
 ---

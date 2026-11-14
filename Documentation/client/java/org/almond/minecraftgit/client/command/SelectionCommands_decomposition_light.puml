@@ -1,0 +1,351 @@
+@startuml
+
+'
+' Light theme
+'
+
+'
+' Colors
+'
+!$color_bg = "#FFFFFF"
+!$color_fg = "#000000"
+!$color_arrow = "#6b7280"
+
+!$color_primary = "#333333"
+!$color_sydd_bg = "#f0f7ff"
+!$color_sydd_border = "#a9baccff"
+!$color_sydd_main_border = "#2b6cb0"
+
+!$color_srs_bg = "#fffbea"
+!$color_srs_border = "#b7791f"
+
+!$color_component_bg = "#e2e8f0"
+!$color_component_border = "#4a5568"
+!$color_external_component_bg = "#8eb2c0"
+!$color_external_component_border = "#355360"
+
+skinparam {
+  BackgroundColor $color_bg
+
+  DefaultFontName "Segoe UI"
+  DefaultFontColor $color_fg
+
+  ArrowColor $color_arrow
+  ArrowFontSize 10
+  ArrowFontStyle bold
+
+  RectangleBackgroundColor $color_bg
+  RectangleBorderColor $color_primary
+  RectangleBorderThickness 2
+
+  ComponentBackgroundColor $color_sydd_bg
+  ComponentBorderColor $color_sydd_main_border
+  ComponentBorderThickness 2
+
+  ComponentStereotypeFontColor $color_fg
+  Shadowing false
+}
+
+skinparam rectangle<<ZC>> {
+  BackgroundColor $color_bg
+  BorderColor $color_primary
+  BorderThickness 2
+}
+
+skinparam rectangle<<SyDD>> {
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+skinparam rectangle<<SyDDMain>> {
+  FontStyle plain
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_main_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRS>> {
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRSMain>> {
+  FontStyle plain
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam component<<External>> {
+  BackgroundColor $color_external_component_bg
+  BorderColor $color_external_component_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #dbeafe
+  BorderColor #2b6cb0
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #eff6ff
+  BorderColor #5b7fb6
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #f8fbff
+  BorderColor #6b8bbd
+  BorderThickness 1
+}
+
+hide stereotype
+left to right direction
+title Function Call Decomposition: client/java/org/almond/minecraftgit/client/command/SelectionCommands.java
+skinparam packageStyle rectangle
+
+rectangle "SelectionCommands.java" <<FileLevel>> as file_SelectionCommands {
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_SelectionCommands {
+    component "SelectionCommands.java::<b>SelectionCommands()</b>" <<FunctionLevel>> as m_1
+    component "SelectionCommands.java::<b>add()</b>" <<FunctionLevel>> as m_2
+    component "SelectionCommands.java::<b>attach()</b>" <<FunctionLevel>> as m_3
+    component "SelectionCommands.java::<b>create()</b>" <<FunctionLevel>> as m_4
+    component "SelectionCommands.java::<b>delete()</b>" <<FunctionLevel>> as m_5
+    component "SelectionCommands.java::<b>info()</b>" <<FunctionLevel>> as m_6
+    component "SelectionCommands.java::<b>list()</b>" <<FunctionLevel>> as m_7
+    component "SelectionCommands.java::<b>names()</b>" <<FunctionLevel>> as m_8
+    component "SelectionCommands.java::<b>position()</b>" <<FunctionLevel>> as m_9
+    component "SelectionCommands.java::<b>remove()</b>" <<FunctionLevel>> as m_10
+    component "SelectionCommands.java::<b>reorigin()</b>" <<FunctionLevel>> as m_11
+    component "SelectionCommands.java::<b>requirePlayer()</b>" <<FunctionLevel>> as m_12
+    component "SelectionCommands.java::<b>resolve()</b>" <<FunctionLevel>> as m_13
+    component "SelectionCommands.java::<b>select()</b>" <<FunctionLevel>> as m_14
+    component "SelectionCommands.java::<b>show()</b>" <<FunctionLevel>> as m_15
+    component "SelectionCommands.java::<b>usage()</b>" <<FunctionLevel>> as m_16
+    component "SelectionCommands.java::<b>wand()</b>" <<FunctionLevel>> as m_17
+    component "SelectionCommands.java::<b>world()</b>" <<FunctionLevel>> as m_18
+  }
+}
+
+cloud "SelectionException()" as ext_34
+cloud "active()" as ext_17
+cloud "addCuboid()" as ext_7
+cloud "boundsMax()" as ext_26
+cloud "boundsMin()" as ext_25
+cloud "complete()" as ext_18
+cloud "config()" as ext_38
+cloud "cuboidCount()" as ext_14
+cloud "cuboids()" as ext_27
+cloud "current()" as ext_29
+cloud "dimensions()" as ext_13
+cloud "get()" as ext_16
+cloud "give()" as ext_37
+cloud "handleCorner()" as ext_30
+cloud "hasOrigin()" as ext_23
+cloud "highlight()" as ext_35
+cloud "id()" as ext_8
+cloud "isEmpty()" as ext_28
+cloud "isTracked()" as ext_22
+cloud "messages()" as ext_4
+cloud "name()" as ext_9
+cloud "origin()" as ext_15
+cloud "raw()" as ext_21
+cloud "rebaseStaged()" as ext_33
+cloud "removeCuboid()" as ext_31
+cloud "restrictStaged()" as ext_32
+cloud "run()" as ext_36
+cloud "runInt()" as ext_1
+cloud "selectionManager()" as ext_2
+cloud "selections()" as ext_6
+cloud "send()" as ext_5
+cloud "setActive()" as ext_11
+cloud "setPending()" as ext_10
+cloud "staging()" as ext_19
+cloud "success()" as ext_12
+cloud "takePending()" as ext_3
+cloud "unstage()" as ext_20
+cloud "volume()" as ext_24
+cloud "warn()" as ext_39
+
+m_2 --> ext_1
+m_2 <--> m_12
+m_2 <--> m_18
+m_2 --> ext_2
+m_2 --> ext_3
+m_2 --> ext_4
+m_2 --> ext_5
+m_2 <--> m_13
+m_2 --> ext_6
+m_2 --> ext_7
+m_2 --> ext_8
+m_2 --> ext_9
+m_2 --> ext_10
+m_2 --> ext_11
+m_2 --> ext_12
+m_2 --> ext_13
+m_2 --> ext_14
+m_3 <--> m_16
+m_3 <--> m_4
+m_3 <--> m_7
+m_3 <--> m_8
+m_3 <--> m_14
+m_3 <--> m_15
+m_3 <--> m_2
+m_3 <--> m_10
+m_3 <--> m_11
+m_3 <--> m_5
+m_3 <--> m_6
+m_3 <--> m_17
+m_3 <--> m_9
+m_4 --> ext_1
+m_4 <--> m_12
+m_4 <--> m_18
+m_4 --> ext_2
+m_4 --> ext_3
+m_4 --> ext_6
+m_4 <--> m_4
+m_4 --> ext_8
+m_4 --> ext_7
+m_4 <--> m_5
+m_4 --> ext_11
+m_4 --> ext_4
+m_4 --> ext_12
+m_4 --> ext_14
+m_4 --> ext_15
+m_4 --> ext_10
+m_5 --> ext_1
+m_5 <--> m_12
+m_5 <--> m_18
+m_5 --> ext_6
+m_5 --> ext_16
+m_5 --> ext_8
+m_5 <--> m_5
+m_5 --> ext_9
+m_5 --> ext_2
+m_5 --> ext_17
+m_5 --> ext_11
+m_5 --> ext_18
+m_5 --> ext_19
+m_5 --> ext_20
+m_5 --> ext_4
+m_5 --> ext_12
+m_6 --> ext_1
+m_6 <--> m_12
+m_6 <--> m_18
+m_6 <--> m_13
+m_6 --> ext_4
+m_6 --> ext_21
+m_6 --> ext_9
+m_6 --> ext_22
+m_6 --> ext_23
+m_6 --> ext_15
+m_6 --> ext_14
+m_6 --> ext_24
+m_6 --> ext_25
+m_6 --> ext_26
+m_6 --> ext_27
+m_7 --> ext_1
+m_7 <--> m_12
+m_7 <--> m_18
+m_7 --> ext_6
+m_7 <--> m_7
+m_7 --> ext_8
+m_7 --> ext_28
+m_7 --> ext_4
+m_7 --> ext_5
+m_7 --> ext_21
+m_7 --> ext_2
+m_7 --> ext_17
+m_7 --> ext_9
+m_7 --> ext_14
+m_7 --> ext_24
+m_7 --> ext_23
+m_7 --> ext_15
+m_7 --> ext_22
+m_8 --> ext_29
+m_8 --> ext_6
+m_8 <--> m_7
+m_8 --> ext_8
+m_8 --> ext_9
+m_9 --> ext_1
+m_9 <--> m_12
+m_9 --> ext_4
+m_9 --> ext_5
+m_9 --> ext_30
+m_10 --> ext_1
+m_10 <--> m_12
+m_10 <--> m_18
+m_10 <--> m_13
+m_10 --> ext_6
+m_10 --> ext_31
+m_10 --> ext_8
+m_10 --> ext_9
+m_10 --> ext_18
+m_10 --> ext_19
+m_10 --> ext_32
+m_10 --> ext_4
+m_10 --> ext_12
+m_10 --> ext_13
+m_10 --> ext_15
+m_11 --> ext_1
+m_11 <--> m_12
+m_11 <--> m_18
+m_11 <--> m_13
+m_11 --> ext_6
+m_11 <--> m_11
+m_11 --> ext_8
+m_11 --> ext_9
+m_11 --> ext_18
+m_11 --> ext_19
+m_11 --> ext_33
+m_11 --> ext_15
+m_11 --> ext_4
+m_11 --> ext_12
+m_12 --> ext_34
+m_13 --> ext_2
+m_13 --> ext_17
+m_13 --> ext_34
+m_13 --> ext_6
+m_13 --> ext_16
+m_13 --> ext_8
+m_14 --> ext_1
+m_14 <--> m_12
+m_14 <--> m_18
+m_14 --> ext_6
+m_14 --> ext_16
+m_14 --> ext_8
+m_14 --> ext_2
+m_14 --> ext_11
+m_14 --> ext_9
+m_14 --> ext_4
+m_14 --> ext_12
+m_15 --> ext_1
+m_15 <--> m_12
+m_15 <--> m_18
+m_15 <--> m_13
+m_15 --> ext_14
+m_15 --> ext_4
+m_15 --> ext_5
+m_15 --> ext_9
+m_15 --> ext_35
+m_15 --> ext_8
+m_15 --> ext_12
+m_16 --> ext_36
+m_16 --> ext_4
+m_16 --> ext_21
+m_17 --> ext_1
+m_17 <--> m_12
+m_17 --> ext_37
+m_17 --> ext_38
+m_17 --> ext_4
+m_17 --> ext_12
+m_17 --> ext_39
+m_18 --> ext_29
+@enduml

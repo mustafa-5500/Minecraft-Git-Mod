@@ -11,7 +11,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `BackupException`.
+`BackupService` throws it when a pre-apply backup cannot be written or listed, or when a selection name is invalid; the pull/apply path surfaces the message during `/git pull --abort`. Example: `throw new BackupException("Could not create a pre-apply backup: " + e.getMessage(), e);`
 
 A backup could not be created or read.
 
@@ -25,12 +25,12 @@ public BackupException(String message)
 ```
 
 ### Description
-TODO: Describe what `BackupException` does.
+Creates an exception with a chat-safe message describing the backup failure; no cause is attached.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | User-facing explanation of the backup failure. |
 
 ### Returns
 `BackupException` instance.
@@ -45,13 +45,13 @@ public BackupException(String message, Throwable cause)
 ```
 
 ### Description
-TODO: Describe what `BackupException` does.
+Creates an exception with a chat-safe message and retains the underlying `IOException` or name-validation cause.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
-| `cause` | `Throwable` | TODO: describe |
+| `message` | `String` | User-facing explanation of the failure. |
+| `cause` | `Throwable` | Underlying throwable retained for diagnostics. |
 
 ### Returns
 `BackupException` instance.

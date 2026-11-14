@@ -30,7 +30,13 @@
 
 ## Usage
 
-TODO: Describe how `RepoMetadata` is instantiated and used.
+Instantiated only through `RepoMetadata.defaults` (new world) or Gson inside `RepoMetadataStore.load` (existing world), then cached by `RepoManager`. Callers mutate the cached instance's setters and persist it with `RepoManager.saveMetadata`; the class itself performs no IO and has no knowledge of paths.
+
+```java
+RepoMetadata metadata = RepoMetadata.defaults(worldId,
+        new RepoOptions("main", "origin", "Alex", "alex@example.com"));
+metadata.setLastSelection("castle");
+```
 
 ---
 
@@ -54,7 +60,7 @@ import java.time.Instant;
 
 | Import | Purpose |
 |--------|---------|
-| `Instant` | TODO: describe purpose |
+| `Instant` | Stamps `createdAt` with a UTC ISO-8601 timestamp in `defaults` and in `normalize` when legacy metadata lacks one. |
 
 ---
 
@@ -64,6 +70,7 @@ import java.time.Instant;
 public final class RepoMetadata {
 ```
 
+A deliberately plain mutable POJO: private fields with public getters/setters, no interfaces, no validation in the accessors. It is `final` because Gson only needs to instantiate the concrete type, and the JSON schema is exactly these field names. Repair of partial or hand-edited JSON is centralized in `normalize` instead of being spread across setters.
 
 ---
 
@@ -82,14 +89,14 @@ private String createdAt;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `world` | `String` | TODO: describe |
-| `branch` | `String` | TODO: describe |
-| `remoteName` | `String` | TODO: describe |
-| `remoteUrl` | `String` | TODO: describe |
-| `authorName` | `String` | TODO: describe |
-| `authorEmail` | `String` | TODO: describe |
-| `lastSelection` | `String` | TODO: describe |
-| `createdAt` | `String` | TODO: describe |
+| `world` | `String` | World key; has no field initializer, so a freshly constructed instance is `null` until `defaults` or `normalize` assigns the load argument. |
+| `branch` | `String` | Initialized to `main`; the branch JGit creates and the local branch compared during pull. |
+| `remoteName` | `String` | Initialized to `origin`; the default remote for commands that do not name one. |
+| `remoteUrl` | `String` | Initialized to `""`; filled from `RepoInfo.remoteUrl` after init when a remote exists. |
+| `authorName` | `String` | Initialized to `MinecraftGit`; sentinel value that lets `RepoManager.isDefaultIdentity` detect an unpersonalized world. |
+| `authorEmail` | `String` | Initialized to `minecraftgit@localhost`; replaced together with the name by first init. |
+| `lastSelection` | `String` | Initialized to `""`; the wand's remembered active selection name. |
+| `createdAt` | `String` | Initialized with `Instant.now().toString()`; records first creation for diagnostics. |
 
 ---
 
@@ -99,7 +106,7 @@ private String createdAt;
 public static RepoMetadata defaults(String world, RepoOptions options)
 ```
 
-TODO: Provide detailed design explanation for `defaults`.
+A static factory rather than a constructor, so the no-arg constructor Gson uses stays untouched. It builds a new object and copies the four values that `RepoOptions` owns (`branch`, `defaultRemote` → `remoteName`, `authorName`, `authorEmail`), leaving `remoteUrl`/`lastSelection` at their empty initializers and re-stamping `createdAt`. Because `RepoOptions` has already canonicalized blanks, the result is always usable without calling `normalize`.
 
 ---
 
@@ -111,6 +118,14 @@ public RepoMetadata normalize(String world, RepoOptions options)
 
 Fill in blanks introduced by older or hand-edited metadata files.
 
+It calls `defaults(world, options)` once to obtain fallback values, then walks each field:
+
+- `world`, `branch`, `remoteName`, `authorName`, `authorEmail`, `createdAt`: replaced when `null` or blank.
+- `remoteUrl`, `lastSelection`: only `null` is converted to `""`, because an empty remote URL is a meaningful state (no remote yet).
+- Non-blank custom values are never overwritten, so a player's author or branch survives an upgrade.
+
+It mutates the receiver in place and returns `this`, which is how `RepoMetadataStore.load` can `return metadata.normalize(world, defaults)`.
+
 ---
 
 ## 7. `world()`
@@ -119,7 +134,7 @@ Fill in blanks introduced by older or hand-edited metadata files.
 public String world()
 ```
 
-TODO: Provide detailed design explanation for `world`.
+Trivial getter for the world key. `RepoMetadataStore.file` relies on it indirectly through `save`, and `RepoManager.service` uses it only as the cache key of the surrounding map.
 
 ---
 
@@ -129,7 +144,7 @@ TODO: Provide detailed design explanation for `world`.
 public void setWorld(String world)
 ```
 
-TODO: Provide detailed design explanation for `setWorld`.
+Plain setter with no validation. It is not called by the manager (the load path passes the world to `normalize`), so changing it in code would make `save` write a different world's file.
 
 ---
 
@@ -139,7 +154,7 @@ TODO: Provide detailed design explanation for `setWorld`.
 public String branch()
 ```
 
-TODO: Provide detailed design explanation for `branch`.
+Getter consumed when building `RepoOptions` for a new `RepoService` and when `init` records the branch; `normalize` guarantees it is non-blank for loaded metadata.
 
 ---
 
@@ -149,7 +164,7 @@ TODO: Provide detailed design explanation for `branch`.
 public void setBranch(String branch)
 ```
 
-TODO: Provide detailed design explanation for `setBranch`.
+Plain setter; does not rename a Git branch and does not reconfigure already-created services, because `RepoOptions` was captured at service creation.
 
 ---
 
@@ -159,7 +174,7 @@ TODO: Provide detailed design explanation for `setBranch`.
 public String remoteName()
 ```
 
-TODO: Provide detailed design explanation for `remoteName`.
+Getter for the default remote name, read by commands (`push`, `fetch`, `pull`) and by `RepoOptions` construction.
 
 ---
 
@@ -169,7 +184,7 @@ TODO: Provide detailed design explanation for `remoteName`.
 public void setRemoteName(String remoteName)
 ```
 
-TODO: Provide detailed design explanation for `setRemoteName`.
+Plain setter for the default remote name. It neither adds nor renames remotes in the repository; that is `RepoService.remoteAdd`/`remoteRemove`.
 
 ---
 
@@ -179,7 +194,7 @@ TODO: Provide detailed design explanation for `setRemoteName`.
 public String remoteUrl()
 ```
 
-TODO: Provide detailed design explanation for `remoteUrl`.
+Getter for the last recorded remote URL. It is informational only: transport code resolves the real URL from the JGit remote configuration.
 
 ---
 
@@ -189,7 +204,7 @@ TODO: Provide detailed design explanation for `remoteUrl`.
 public void setRemoteUrl(String remoteUrl)
 ```
 
-TODO: Provide detailed design explanation for `setRemoteUrl`.
+Plain setter used by `RepoManager.init` when `RepoInfo` reports a non-blank URL. A `null` value is tolerated until the next `normalize`, which converts it to `""`.
 
 ---
 
@@ -199,7 +214,7 @@ TODO: Provide detailed design explanation for `setRemoteUrl`.
 public String authorName()
 ```
 
-TODO: Provide detailed design explanation for `authorName`.
+Getter that feeds `RepoOptions.authorName`, `RepoService.setAuthor` and the default-identity check in `RepoManager.init`.
 
 ---
 
@@ -209,7 +224,7 @@ TODO: Provide detailed design explanation for `authorName`.
 public void setAuthorName(String authorName)
 ```
 
-TODO: Provide detailed design explanation for `setAuthorName`.
+Plain setter; persistence plus propagation to the live service is orchestrated by `RepoManager.setAuthor`. Blank values would be rejected only later by `RepoService.setAuthor`.
 
 ---
 
@@ -219,7 +234,7 @@ TODO: Provide detailed design explanation for `setAuthorName`.
 public String authorEmail()
 ```
 
-TODO: Provide detailed design explanation for `authorEmail`.
+Getter for the author email used as the committer identity in JGit config and in the bootstrap commit.
 
 ---
 
@@ -229,7 +244,7 @@ TODO: Provide detailed design explanation for `authorEmail`.
 public void setAuthorEmail(String authorEmail)
 ```
 
-TODO: Provide detailed design explanation for `setAuthorEmail`.
+Plain setter paired with `setAuthorName`; there is no validation here, by design, so the metadata schema stays a faithful view of the JSON file.
 
 ---
 
@@ -239,7 +254,7 @@ TODO: Provide detailed design explanation for `setAuthorEmail`.
 public String lastSelection()
 ```
 
-TODO: Provide detailed design explanation for `lastSelection`.
+Getter used by `RepoManager.lastSelection` and `SelectionManager.active`; an empty string means "nothing remembered", never `null` for freshly defaulted metadata.
 
 ---
 
@@ -249,7 +264,7 @@ TODO: Provide detailed design explanation for `lastSelection`.
 public void setLastSelection(String lastSelection)
 ```
 
-TODO: Provide detailed design explanation for `setLastSelection`.
+Plain setter for the remembered selection name; `RepoManager.setLastSelection` normalizes `null` to `""` before calling it, and saving happens separately.
 
 ---
 
@@ -259,6 +274,6 @@ TODO: Provide detailed design explanation for `setLastSelection`.
 public String createdAt()
 ```
 
-TODO: Provide detailed design explanation for `createdAt`.
+Getter with no matching setter, so the timestamp is read-only once Gson or `defaults` has populated it. It is generated with `Instant.toString()` (UTC, ISO-8601) and is informational; no code currently reads it back for ordering or comparisons.
 
 ---

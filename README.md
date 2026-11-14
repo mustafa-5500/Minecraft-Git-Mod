@@ -189,6 +189,7 @@ that block entity, while still applying the block state.
 ## Development
 
 - Implementation plan: [Development-Notes/Plan/Git Mod Implementation Plan.md](Development-Notes/Plan/Git%20Mod%20Implementation%20Plan.md)
+- Implementation documentation (high to low level, with PlantUML data-flow diagrams): [Documentation/Implementation/README.md](Documentation/Implementation/README.md)
 - Format: [Documentation/Git-Format.md](Documentation/Git-Format.md)
 - Build/CI/release guide: [Documentation/DEVOPS.md](Documentation/DEVOPS.md)
 - Testing and manual checklist: [Documentation/Testing.md](Documentation/Testing.md)

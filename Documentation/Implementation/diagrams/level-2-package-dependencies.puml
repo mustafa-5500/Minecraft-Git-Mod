@@ -1,0 +1,92 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #64748B
+}
+hide stereotype
+left to right direction
+
+title L2 - Package Dependency Rules
+
+package "src/client\n(client-only)" as client {
+  package "client.command" as ccommand
+  package "client.selection" as cselection
+  package "client.world" as cworld
+  rectangle "GitServices\nMessages\nWorldContext\nMinecraftGitClient" as ccore
+}
+
+package "src/main\n(game-common)" as main {
+  package "model" as model
+  package "serialization" as serialization
+  package "util / config / debug" as support
+  package "repo" as repo
+  package "selection" as selection
+  package "staging" as staging
+  package "commit" as commit
+  package "status" as status
+  package "sync" as sync
+  package "backup" as backup
+  package "world" as world
+}
+
+ccore --> ccommand
+ccore --> cselection
+ccore --> cworld
+ccommand --> selection
+ccommand --> staging
+ccommand --> commit
+ccommand --> status
+ccommand --> sync
+ccommand --> backup
+ccommand --> repo
+ccommand --> world
+cselection --> selection
+cselection --> repo
+cselection --> model
+cworld --> world
+cworld --> backup
+cworld --> model
+
+commit --> staging
+commit --> repo
+commit --> serialization
+commit --> model
+status --> staging
+status --> repo
+status --> serialization
+status --> model
+sync --> repo
+sync --> serialization
+sync --> model
+selection --> model
+selection --> support
+staging --> model
+staging --> support
+backup --> staging
+backup --> model
+world --> model
+world --> serialization
+world --> support
+repo --> model
+repo --> support
+serialization --> model
+serialization --> support
+model --> support
+
+note bottom of main
+  Allowed direction:
+  model <- serialization <- repo/selection/staging <- commit/status/sync/backup
+  world -> model/serialization
+  src/client -> any src/main package
+
+  Forbidden:
+  model -> Minecraft/JGit/client
+  serialization -> client
+  repo/selection/staging -> client
+  src/main -> src/client
+end note
+
+@enduml

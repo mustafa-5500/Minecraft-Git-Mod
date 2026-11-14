@@ -1,0 +1,60 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontSize 11
+}
+skinparam ArrowFontSize 10
+hide stereotype
+left to right direction
+
+title L5 - Function data flow: /git status and /git diff (main data path)
+
+package "Commands and capture" {
+  rectangle "StatusCommands.status()\nStatusCommands.diff()" as cmd
+  rectangle "SelectionService.list()\nSelectionService.get()" as selections
+  rectangle "WorldAccess.capture()" as wacapture
+  rectangle "SnapshotService.capture()" as capture
+  rectangle "CaptureResult\n(Snapshot + skips/warnings)" as current
+}
+
+package "Three-way comparison" {
+  rectangle "StatusService.report()\nStatusService.diff()" as service
+  rectangle "StatusService.statusOf()" as statusof
+  rectangle "StagingService.load()" as staged
+  rectangle "StatusService.readHead()" as readhead
+  rectangle "CommitMeta.read()\nQuadrantCsvReader.readSelection()" as head
+  rectangle "BuildDiff.between()" as diff
+  rectangle "DiffCounts.of()\nSelectionStatus" as counts
+  rectangle "Report / DiffReport" as report
+}
+
+cmd --> selections : "worldId, owner\n(name for diff)"
+selections --> cmd : "Selection(s)"
+cmd --> wacapture : "Selection (candidates,\nnot over statusMaxVolume)"
+wacapture --> capture : "Selection, Level"
+capture --> current : "Snapshot (relative coords)"
+current --> service : "Map<String,Snapshot>\ntooLarge, incomplete"
+service --> statusof : "per selection"
+statusof --> staged : "worldId, owner, name"
+staged --> statusof : "StagedSelection"
+statusof --> readhead : "repo, selection"
+readhead --> head : "meta.json + HEAD CSV tree"
+head --> readhead : "HEAD Snapshot or null"
+statusof --> diff : "HEAD/staged and\nstaged/current"
+diff --> statusof : "BuildDiff"
+statusof --> counts : "BuildDiff"
+counts --> statusof : "added/changed/removed/\nentityChanges"
+statusof --> report : "SelectionStatus"
+report --> cmd : "Report / DiffReport"
+
+note right of service
+  Read-only: no repository or
+  world write. Corrupt HEAD/staging
+  is logged and treated as absent.
+end note
+
+@enduml

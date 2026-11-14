@@ -1,0 +1,86 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam sequence {
+  ArrowColor #475569
+  LifeLineBorderColor #94A3B8
+  ParticipantBackgroundColor #E8F1FB
+  ParticipantBorderColor #2B6CB0
+  ActorBackgroundColor #FFFFFF
+  ActorBorderColor #333333
+}
+hide footbox
+
+title L4 - /git status and /git diff
+
+actor Player as P
+participant "StatusCommands" as SC
+participant "SelectionService" as SEL
+participant "WorldAccess" as WA
+participant "SnapshotService" as SS
+participant "StatusService" as STAT
+participant "StagingService" as ST
+participant "RepoService" as RS
+participant "QuadrantCsvReader" as RD
+participant "BuildDiff" as DIFF
+
+== /git status ==
+P -> SC : /git status
+SC -> SEL : list(worldId, owner)
+SEL --> SC : List<Selection>
+SC -> SC : filter candidates:\nhas cuboids and (tracked | inHead | staged)
+SC -> SC : volume > statusMaxVolume -> tooLarge
+loop each candidate
+  SC -> WA : capture(services, world, selection)
+  WA -> SS : capture(...)
+  SS --> WA : CaptureResult
+  WA --> SC : CaptureResult
+  SC -> SC : partial -> incomplete\ncurrent[name] = snapshot
+end
+SC -> STAT : report(worldId, owner, selections,\ncurrent, tooLarge, incomplete)  [IO]
+STAT -> RS : currentBranch() / headCommit()
+RS --> STAT : branch + short HEAD
+loop each selection
+  STAT -> ST : load(worldId, owner, name)
+  ST --> STAT : Optional<StagedSelection>
+  STAT -> RS : path()
+  STAT -> RD : readSelection(HEAD dir, name, origin)
+  RD --> STAT : HEAD Snapshot (or null)
+  STAT -> DIFF : between(HEAD/empty, staged)
+  STAT -> DIFF : between(base, current)
+  DIFF --> STAT : DiffCounts
+  STAT -> STAT : statusOf -> SelectionStatus\n(note if tooLarge/incomplete/not captured)
+end
+STAT --> SC : Report
+SC --> P : lines: [untracked]/[clean]/[dirty],\nstaged/working summaries, totals
+
+== /git diff [name] ==
+P -> SC : /git diff <name>
+SC -> SEL : get(worldId, owner, name)
+SEL --> SC : Selection
+alt volume > statusMaxVolume
+  SC -> SC : no capture (tooLarge)
+else
+  SC -> WA : capture(services, world, selection)
+  WA -> SS : capture(...)
+  SS --> WA : CaptureResult
+  WA --> SC : CaptureResult
+end
+SC -> STAT : diff(worldId, owner, selection,\ncurrent, tooLarge, incomplete)  [IO]
+STAT -> RD : readHead(repo, selection)
+RD --> STAT : HEAD snapshot
+STAT -> ST : loadStaged(...)
+ST --> STAT : Optional<StagedSelection>
+STAT -> DIFF : between(HEAD/empty, staged/base)
+STAT -> DIFF : between(base, current)
+STAT --> SC : DiffReport(status, stagedDiff, workingDiff, current)
+SC --> P : HEAD/staged/current presence,\nsummaries, up to 6 samples per list
+
+note over STAT
+  Status and diff are read-only:
+  no repository write, no world write.
+  Corrupt HEAD/staging is logged and
+  treated as absent.
+end note
+
+@enduml

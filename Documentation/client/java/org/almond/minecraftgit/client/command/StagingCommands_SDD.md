@@ -21,13 +21,13 @@
 
 ## Usage
 
-TODO: Describe how `StagingCommands` is instantiated and used.
+`StagingCommands` is a static command module wired by `GitCommand.register` through `attach(root, services)`; it keeps no state. `/git add` executes the asynchronous capture -> stage -> track -> set-active pipeline and `/git rm` deletes the staged snapshot on the IO pool and clears the tracked flag.
 
 ---
 
 ## 1. Overview
 
-{@code /git add} and {@code /git rm}: stage and untrack a selection.
+`/git add` and `/git rm`: stage and untrack a selection.
 
 ---
 
@@ -55,19 +55,19 @@ import java.util.List;
 
 | Import | Purpose |
 |--------|---------|
-| `StringArgumentType` | TODO: describe purpose |
-| `LiteralArgumentBuilder` | TODO: describe purpose |
-| `SuggestionProvider` | TODO: describe purpose |
-| `ClientCommandManager` | TODO: describe purpose |
-| `FabricClientCommandSource` | TODO: describe purpose |
-| `Player` | TODO: describe purpose |
-| [`GitServices`](../GitServices.md) | TODO: describe purpose |
-| [`WorldContext`](../WorldContext.md) | TODO: describe purpose |
-| [`WorldAccess`](../world/WorldAccess.md) | TODO: describe purpose |
-| [`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) | TODO: describe purpose |
-| [`SelectionException`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionException.md) | TODO: describe purpose |
-| [`StagedSelection`](../../../../../../../main/java/org/almond/minecraftgit/staging/StagedSelection.md) | TODO: describe purpose |
-| `List` | TODO: describe purpose |
+| `StringArgumentType` | declares the optional `name` argument for both commands |
+| `LiteralArgumentBuilder` | root builder the `add`/`rm` literals attach to |
+| `SuggestionProvider` | tab-completes existing selection names |
+| `ClientCommandManager` | Fabric factory for the `add`/`rm` literals and arguments |
+| `FabricClientCommandSource` | handler source for player, client and feedback |
+| `Player` | supplies the UUID and name used as the selection/staging owner |
+| [`GitServices`](../GitServices.md) | access to repositories, selections, staging, selection manager and messages |
+| [`WorldContext`](../WorldContext.md) | world id and single-player flag that route the capture |
+| [`WorldAccess`](../world/WorldAccess.md) | captures blocks from the integrated server or client chunks |
+| [`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) | target selection with its cuboids and origin |
+| [`SelectionException`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionException.md) | player-readable validation failures |
+| [`StagedSelection`](../../../../../../../main/java/org/almond/minecraftgit/staging/StagedSelection.md) | staged handle carrying block/entity counts and snapshot origin |
+| `List` | iteration type when building name suggestions |
 
 ---
 
@@ -77,6 +77,7 @@ import java.util.List;
 public final class StagingCommands {
 ```
 
+- **`final` with a private constructor** — a static command module; per-request values are passed as method parameters, while durable state lives in `SelectionService` and `StagingService`.
 
 ---
 
@@ -86,7 +87,7 @@ public final class StagingCommands {
 private StagingCommands()
 ```
 
-TODO: Provide detailed design explanation for `StagingCommands`.
+Private constructor keeps the module static; every collaborator arrives through the `services` graph, so there is no per-instance lifecycle or mutable command state.
 
 ---
 
@@ -96,7 +97,7 @@ TODO: Provide detailed design explanation for `StagingCommands`.
 public static void attach(LiteralArgumentBuilder<FabricClientCommandSource> root, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `attach`.
+Registers `add` and `rm`, each with a no-argument form (passes `requested == null`) and a `name` form with suggestions from `names(services)`. Both forms call the same private handler, so selection resolution and validation live in one place.
 
 ---
 
@@ -106,7 +107,7 @@ TODO: Provide detailed design explanation for `attach`.
 private static int add(FabricClientCommandSource source, GitServices services, String requested)
 ```
 
-TODO: Provide detailed design explanation for `add`.
+Pipeline design: validate player/repository, resolve the selection, reject `cuboidCount() == 0`, then start `WorldAccess.capture`. `WorldAccess` completes on the integrated-server thread in single-player or on the client thread in multiplayer; the callback is re-dispatched with `client.execute` and silently aborts if the player left the world. The capture summary plus at most five warnings are printed, then `CommandSupport.complete` runs `StagingService.stage` (origin rebase and durable snapshot write) off the render thread and calls `onStaged` on the client thread. The handler returns `1` before either async step finishes; callback failures go through `CommandSupport.handleError`.
 
 ---
 
@@ -117,7 +118,7 @@ private static void onStaged(FabricClientCommandSource source, GitServices servi
                                  Player player, Selection selection, StagedSelection staged)
 ```
 
-TODO: Provide detailed design explanation for `onStaged`.
+Final pipeline step: `SelectionService.setTracked(..., true)` records tracking, `SelectionManager.setActive` remembers the selection (persisted in local repo metadata), and chat reports name, block/entity counts and snapshot origin. If the snapshot has no blocks it notes that the commit will record an empty selection; the next-step hint is always `/git commit`.
 
 ---
 
@@ -127,7 +128,7 @@ TODO: Provide detailed design explanation for `onStaged`.
 private static int rm(FabricClientCommandSource source, GitServices services, String requested)
 ```
 
-TODO: Provide detailed design explanation for `rm`.
+Inverse pipeline: validate, resolve, then `CommandSupport.complete` calls `StagingService.unstage` on the IO pool, which deletes `<stagingRoot>/<world>/<uuid>/<name>.snap` if present. On the client thread it calls `setTracked(..., false)` and reports that the selection was untracked and its staged snapshot removed. Returns `1` immediately; staging errors surface through `handleError`.
 
 ---
 
@@ -137,7 +138,7 @@ TODO: Provide detailed design explanation for `rm`.
 private static Selection resolve(GitServices services, WorldContext world, Player player, String requested)
 ```
 
-TODO: Provide detailed design explanation for `resolve`.
+Name resolution shared by add/rm: a non-blank `requested` wins, otherwise `SelectionManager.active` returns the remembered selection or `null` if none is valid. A blank result raises `SelectionException` telling the player to pass a name or use `/git selection select`; `SelectionService.get` then loads the durable selection or raises when it does not exist for this world/player.
 
 ---
 
@@ -147,7 +148,7 @@ TODO: Provide detailed design explanation for `resolve`.
 private static Player requirePlayer(FabricClientCommandSource source)
 ```
 
-TODO: Provide detailed design explanation for `requirePlayer`.
+Guard for player-only commands: throws `SelectionException` when `source.getPlayer()` is null, otherwise returns the player whose UUID keys selections and staging.
 
 ---
 
@@ -157,7 +158,7 @@ TODO: Provide detailed design explanation for `requirePlayer`.
 private static WorldContext world(FabricClientCommandSource source)
 ```
 
-TODO: Provide detailed design explanation for `world`.
+Derives the current `WorldContext` (world id, dimension, single-player flag) from the client; `WorldContext.current` throws `UserFacingException` when no level is loaded.
 
 ---
 
@@ -167,6 +168,6 @@ TODO: Provide detailed design explanation for `world`.
 private static SuggestionProvider<FabricClientCommandSource> names(GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `names`.
+Suggestion-provider design: resolves player and world, lists `SelectionService.list(world, player)` and offers each name; any `RuntimeException` is swallowed so completion can never break parsing. Returns `builder.buildFuture()`, already complete because the names are read synchronously.
 
 ---

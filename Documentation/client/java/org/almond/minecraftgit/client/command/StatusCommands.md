@@ -21,9 +21,9 @@
 
 ## Usage
 
-TODO: Add usage examples for `StatusCommands`.
+Used through chat: `/git status` prints one line per selection with an `[untracked]`, `[clean]` or `[dirty]` tag, cuboid and volume counts, staged and working diff summaries, and a final dirty/untracked/clean total. `/git diff [name]` shows the staged-vs-HEAD and current-vs-base diffs for one selection, with up to six sample blocks apiece for added, changed and removed entries; `name` falls back to the active selection.
 
-{@code /git status} and {@code /git diff}.
+`/git status` and `/git diff`.
 
 ---
 
@@ -35,7 +35,7 @@ private StatusCommands()
 ```
 
 ### Description
-TODO: Describe what `StatusCommands` does.
+Prevents instantiation; the class is a static command handler with no per-instance state.
 
 ### Parameters
 None.
@@ -53,13 +53,13 @@ public static void attach(LiteralArgumentBuilder<FabricClientCommandSource> root
 ```
 
 ### Description
-TODO: Describe what `attach` does.
+Registers `/git status` and `/git diff [name]` on the root builder, with selection-name suggestions for the optional diff argument.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `root` | `LiteralArgumentBuilder<FabricClientCommandSource>` | TODO: describe |
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
+| `root` | `LiteralArgumentBuilder<FabricClientCommandSource>` | The `/git` root literal builder that the subcommands are attached to. |
+| `services` | [`GitServices`](../GitServices.md) | Service graph supplying repository, pull/apply, selection, staging, status and messaging services. |
 
 ### Returns
 `void`
@@ -74,16 +74,16 @@ private static int status(FabricClientCommandSource source, GitServices services
 ```
 
 ### Description
-TODO: Describe what `status` does.
+Entry point for `/git status`: it filters the player's selections, captures a current snapshot for each candidate sequentially, then asks `StatusService.report` for the status on the IO executor and renders it. Selections with no cuboids or with no tracking, HEAD or staged presence are skipped for capture, and selections over `statusMaxVolume` are flagged instead of captured.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
+| `source` | `FabricClientCommandSource` | Command source used to resolve the player and to send chat feedback and errors. |
+| `services` | [`GitServices`](../GitServices.md) | Service graph supplying repository, pull/apply, selection, staging, status and messaging services. |
 
 ### Returns
-`int` — TODO: describe return value.
+`int` — `1` on success; `0` when `CommandSupport.runInt` caught and reported an error.
 
 ---
 
@@ -96,15 +96,15 @@ private static void showStatus(FabricClientCommandSource source, GitServices ser
 ```
 
 ### Description
-TODO: Describe what `showStatus` does.
+Renders the report: a header with the world id and branch/HEAD (or a no-repository note), one raw line per selection with its tag, cuboid and volume counts, indented staged and working diff summaries, any warning note, and the closing dirty/untracked/clean summary.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
-| `world` | [`WorldContext`](../WorldContext.md) | TODO: describe |
-| `report` | `StatusService.Report` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Command source used to resolve the player and to send chat feedback and errors. |
+| `services` | [`GitServices`](../GitServices.md) | Service graph supplying repository, pull/apply, selection, staging, status and messaging services. |
+| `world` | [`WorldContext`](../WorldContext.md) | World context identifying the world and dimension and whether it is single-player. |
+| `report` | `StatusService.Report` | The computed status report (branch, HEAD, per-selection statuses and counts) to render. |
 
 ### Returns
 `void`
@@ -119,17 +119,17 @@ private static int diff(FabricClientCommandSource source, GitServices services, 
 ```
 
 ### Description
-TODO: Describe what `diff` does.
+Entry point for `/git diff [name]`: it resolves the selection, captures its current snapshot unless its volume exceeds `statusMaxVolume`, computes the diff through `StatusService.diff` on the IO executor and renders the result.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
-| `requested` | `String` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Command source used to resolve the player and to send chat feedback and errors. |
+| `services` | [`GitServices`](../GitServices.md) | Service graph supplying repository, pull/apply, selection, staging, status and messaging services. |
+| `requested` | `String` | Optional selection name; blank falls back to the active selection. |
 
 ### Returns
-`int` — TODO: describe return value.
+`int` — `1` on success; `0` when `CommandSupport.runInt` caught and reported an error.
 
 ---
 
@@ -142,15 +142,15 @@ private static void showDiff(FabricClientCommandSource source, GitServices servi
 ```
 
 ### Description
-TODO: Describe what `showDiff` does.
+Prints the selection header with HEAD/staged/current flags, any note, the staged-vs-HEAD and current-vs-base summaries, and sample blocks for added, changed and removed entries from the working diff.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
-| `selection` | [`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) | TODO: describe |
-| `report` | `StatusService.DiffReport` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Command source used to resolve the player and to send chat feedback and errors. |
+| `services` | [`GitServices`](../GitServices.md) | Service graph supplying repository, pull/apply, selection, staging, status and messaging services. |
+| `selection` | [`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) | The selection being displayed; its name and world are printed in the header. |
+| `report` | `StatusService.DiffReport` | Diff report containing the selection status, staged diff and working diff. |
 
 ### Returns
 `void`
@@ -166,14 +166,14 @@ private static void showSamples(FabricClientCommandSource source, String label,
 ```
 
 ### Description
-TODO: Describe what `showSamples` does.
+Prints up to six sample blocks of one diff category with their relative coordinates and block data, followed by a line counting the remaining blocks; an empty list prints nothing.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
-| `label` | `String` | TODO: describe |
-| `blocks` | `List<BlockSnapshot>` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Command source used to resolve the player and to send chat feedback and errors. |
+| `label` | `String` | Category label (`added`, `changed` or `removed`). |
+| `blocks` | `List<BlockSnapshot>` | The diff sample list; at most six entries are printed. |
 
 ### Returns
 `void`
@@ -188,18 +188,18 @@ private static Selection resolve(GitServices services, WorldContext world, Playe
 ```
 
 ### Description
-TODO: Describe what `resolve` does.
+Resolves the selection from the explicit argument or the active selection, throwing `SelectionException` when neither is available.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
-| `world` | [`WorldContext`](../WorldContext.md) | TODO: describe |
-| `player` | `Player` | TODO: describe |
-| `requested` | `String` | TODO: describe |
+| `services` | [`GitServices`](../GitServices.md) | Service graph supplying repository, pull/apply, selection, staging, status and messaging services. |
+| `world` | [`WorldContext`](../WorldContext.md) | World context identifying the world and dimension and whether it is single-player. |
+| `player` | `Player` | The issuing player; their UUID scopes selections. |
+| `requested` | `String` | Optional selection name; when blank the active selection is used. |
 
 ### Returns
-[`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) — TODO: describe return value.
+[`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) — The named or active selection read from `SelectionService`.
 
 ---
 
@@ -211,15 +211,15 @@ private static Player requirePlayer(FabricClientCommandSource source)
 ```
 
 ### Description
-TODO: Describe what `requirePlayer` does.
+Returns the issuing player, or throws `SelectionException` when the command source has none.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Command source used to resolve the player and to send chat feedback and errors. |
 
 ### Returns
-`Player` — TODO: describe return value.
+`Player` — The issuing player.
 
 ---
 
@@ -231,15 +231,15 @@ private static WorldContext world(FabricClientCommandSource source)
 ```
 
 ### Description
-TODO: Describe what `world` does.
+Derives the current `WorldContext` from the command source's client.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `FabricClientCommandSource` | TODO: describe |
+| `source` | `FabricClientCommandSource` | Command source used to resolve the player and to send chat feedback and errors. |
 
 ### Returns
-[`WorldContext`](../WorldContext.md) — TODO: describe return value.
+[`WorldContext`](../WorldContext.md) — The current `WorldContext`.
 
 ---
 
@@ -251,15 +251,15 @@ private static SuggestionProvider<FabricClientCommandSource> names(GitServices s
 ```
 
 ### Description
-TODO: Describe what `names` does.
+Builds a suggestion provider that lists the player's selection names; runtime failures are swallowed so autocomplete never breaks argument parsing.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `services` | [`GitServices`](../GitServices.md) | TODO: describe |
+| `services` | [`GitServices`](../GitServices.md) | Service graph supplying repository, pull/apply, selection, staging, status and messaging services. |
 
 ### Returns
-`SuggestionProvider<FabricClientCommandSource>` — TODO: describe return value.
+`SuggestionProvider<FabricClientCommandSource>` — A `SuggestionProvider` that suggests the player's selection names.
 
 ---
 

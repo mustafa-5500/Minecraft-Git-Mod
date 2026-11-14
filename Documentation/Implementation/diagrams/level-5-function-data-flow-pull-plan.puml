@@ -1,0 +1,62 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontSize 11
+}
+skinparam ArrowFontSize 10
+hide stereotype
+left to right direction
+
+title L5 - Function data flow: /git pull plan and prepare
+
+package "Command" {
+  rectangle "PullCommands.pull()" as pull
+  rectangle "PullCommands.onPlan()" as onplan
+}
+
+package "Repository" {
+  rectangle "RepoService.planPull()" as planpull
+  rectangle "RepoService.listSelectionsAt()" as listat
+  rectangle "RepoService.exportSelectionAt()" as exportat
+  rectangle "PullPlan\n(remote, branch, heads,\nmergeBase, type)" as plan
+}
+
+package "Prepare" {
+  rectangle "PullService.prepare()" as prepare
+  rectangle "QuadrantCsvReader.readSelection()\nCommitMeta.read()" as readmeta
+  rectangle "PreparedPull\n(name, target, meta,\nlocalSelection, localOrigin,\nlocalHead, tempDir)" as prepared
+  rectangle "PullService.cleanup()" as cleanup
+}
+
+pull --> planpull : "remote, RepoProgress"
+planpull --> plan : "fetch + classify\nUP_TO_DATE / FAST_FORWARD /\nDIVERGED"
+plan --> onplan : "plan"
+onplan --> prepare : "worldId, localSelections,\nplayerOrigin, repo, plan,\nonlySelection"
+prepare --> listat : "plan.remoteHead()"
+listat --> prepare : "Set<String> names"
+prepare --> exportat : "commit id, name, tempDir"
+exportat --> prepare : "selection tree on disk"
+prepare --> readmeta : "temp meta.json /\nCSV tree"
+readmeta --> prepare : "target Snapshot,\nlocalHead Snapshot,\norigins"
+prepare --> prepared : "List<PreparedPull>"
+prepared --> cleanup : "temp dirs on failure\nor after apply"
+prepared --> pull : "apply each, then\nfastForward last"
+
+note bottom of planpull
+  Fast-forward only. A pristine init
+  commit (README + .gitattributes)
+  counts as fast-forwardable.
+end note
+
+note bottom of prepare
+  Refuses a named partial pull when the
+  remote has more than one selection,
+  because a fast-forward moves the whole
+  branch.
+end note
+
+@enduml

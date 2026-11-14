@@ -17,7 +17,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `Names`.
+Called statically before creating or staging a selection (`requireSelectionName`) and when mapping world ids to directories (`safeWorldName`); for example, `Names.safeWorldName(worldId)` maps spaces and unsafe characters to underscores, while `Names.requireSelectionName(name)` returns a valid name unchanged.
 
 Selection names become directory names inside a Git repository, so they are
 restricted instead of being sanitized after the fact. World/player ids are
@@ -27,8 +27,8 @@ sanitized because the player never types them.
 
 ## Fields
 
-- `SELECTION` (`Pattern`) — TODO: describe field
-- `WORLD` (`Pattern`) — TODO: describe field
+- `SELECTION` (`Pattern`) — Compiled pattern `[A-Za-z0-9][A-Za-z0-9_-]{0,31}` enforcing 1-32 characters, an alphanumeric first character, then letters, digits, underscore or hyphen.
+- `WORLD` (`Pattern`) — Compiled pattern `[^A-Za-z0-9_.-]` matching every character that must be replaced to make a world id filesystem-safe.
 
 ---
 
@@ -40,7 +40,7 @@ private Names()
 ```
 
 ### Description
-TODO: Describe what `Names` does.
+Private no-op constructor; the class is a static utility holder and is not instantiable.
 
 ### Parameters
 None.
@@ -58,15 +58,15 @@ public static boolean isValidSelectionName(String name)
 ```
 
 ### Description
-TODO: Describe what `isValidSelectionName` does.
+Returns true only for non-null names of 1-32 characters that start with a letter or digit and continue with letters, digits, `_` or `-`, so a validated name is always safe as a repository path component.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `String` | TODO: describe |
+| `name` | `String` | Candidate name; null is rejected. |
 
 ### Returns
-`boolean` — TODO: describe return value.
+`boolean` — true when the name fully matches the `SELECTION` pattern.
 
 ---
 
@@ -78,15 +78,15 @@ public static String requireSelectionName(String name)
 ```
 
 ### Description
-TODO: Describe what `requireSelectionName` does.
+Returns the name unchanged when valid, otherwise throws `IllegalArgumentException` with the exact rule text; callers such as `SelectionService` translate that into a user-facing exception.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `String` | TODO: describe |
+| `name` | `String` | Name to validate and return. |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — the same, valid name.
 
 ---
 
@@ -98,15 +98,15 @@ public static String safeWorldName(String world)
 ```
 
 ### Description
-TODO: Describe what `safeWorldName` does.
+Replaces every character outside `[A-Za-z0-9_.-]` with `_` and maps null to the `world` sentinel, so arbitrary world ids or dimension strings can be used as directory and file names.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
+| `world` | `String` | World id to sanitize; null becomes the `world` sentinel. |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — sanitized world name.
 
 ---
 
@@ -118,15 +118,15 @@ public static String lower(String value)
 ```
 
 ### Description
-TODO: Describe what `lower` does.
+Null-safe lower-casing with `Locale.ROOT`, giving deterministic comparisons independent of the player's default locale.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `String` | TODO: describe |
+| `value` | `String` | String to lower-case; null becomes empty. |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — lower-cased value, or an empty string for null.
 
 ---
 
@@ -138,16 +138,16 @@ public static String shorten(String value, int max)
 ```
 
 ### Description
-TODO: Describe what `shorten` does.
+Returns the value unchanged when it fits in `max` characters, otherwise truncates it at `max` and appends `...`; null becomes an empty string. Intended for chat and table output.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `String` | TODO: describe |
-| `max` | `int` | TODO: describe |
+| `value` | `String` | Text to abbreviate. |
+| `max` | `int` | Maximum length before the ellipsis is appended. |
 
 ### Returns
-`String` — TODO: describe return value.
+`String` — possibly truncated text ending in `...`.
 
 ---
 

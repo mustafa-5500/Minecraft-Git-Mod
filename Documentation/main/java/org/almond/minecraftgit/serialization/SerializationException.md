@@ -11,7 +11,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `SerializationException`.
+`SerializationException` is the single error type of the serialization package: readers and writers throw it for malformed CSV, mismatched origins, unknown quadrants and invalid NBT, and the command layer catches it to show the message to the player. For example, a selection whose files disagree on the origin raises `new SerializationException("Mismatched origin in " + file + ...)` from `QuadrantCsvReader`.
 
 A repository-format error that should be shown to the user.
 
@@ -25,12 +25,12 @@ public SerializationException(String message)
 ```
 
 ### Description
-TODO: Describe what `SerializationException` does.
+Creates a user-facing repository-format error with no underlying cause; the message is expected to name the offending file or operation.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | Message shown to the user, for example `Unknown CSV quadrant 'xx'.` |
 
 ### Returns
 `SerializationException` instance.
@@ -45,13 +45,13 @@ public SerializationException(String message, Throwable cause)
 ```
 
 ### Description
-TODO: Describe what `SerializationException` does.
+Creates a repository-format error that keeps the lower-level cause — typically an `IOException`, `NumberFormatException` or Brigadier `CommandSyntaxException` — for logging while still exposing a readable message.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
-| `cause` | `Throwable` | TODO: describe |
+| `message` | `String` | User-facing description of what failed. |
+| `cause` | `Throwable` | Original exception, preserved for the stack trace. |
 
 ### Returns
 `SerializationException` instance.

@@ -19,7 +19,7 @@
 
 ## Usage
 
-TODO: Describe how `CommitService` is instantiated and used.
+`GitServices` constructs one instance after the staging service and passes it a `RepoManager`, `StagingService`, `ModConfig`, `DebugLogger` and the Fabric mod version; commands then call `commit` on the shared IO executor. The commit lock makes the instance safe to share between command and apply threads even though the underlying file and JGit work is blocking.
 
 ---
 
@@ -69,33 +69,33 @@ import java.util.stream.Stream;
 
 | Import | Purpose |
 |--------|---------|
-| [`ModConfig`](../config/ModConfig.md) | TODO: describe purpose |
-| [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe purpose |
-| [`BlockPos`](../model/BlockPos.md) | TODO: describe purpose |
-| [`BuildDiff`](../model/BuildDiff.md) | TODO: describe purpose |
-| [`Cuboid`](../model/Cuboid.md) | TODO: describe purpose |
-| [`Selection`](../model/Selection.md) | TODO: describe purpose |
-| [`Snapshot`](../model/Snapshot.md) | TODO: describe purpose |
-| [`CommitMeta`](../repo/CommitMeta.md) | TODO: describe purpose |
-| [`RepoManager`](../repo/RepoManager.md) | TODO: describe purpose |
-| [`RepoService`](../repo/RepoService.md) | TODO: describe purpose |
-| [`QuadrantCsvReader`](../serialization/QuadrantCsvReader.md) | TODO: describe purpose |
-| [`QuadrantCsvWriter`](../serialization/QuadrantCsvWriter.md) | TODO: describe purpose |
-| [`StagedSelection`](../staging/StagedSelection.md) | TODO: describe purpose |
-| [`StagingService`](../staging/StagingService.md) | TODO: describe purpose |
-| `IOException` | TODO: describe purpose |
-| `Files` | TODO: describe purpose |
-| `Path` | TODO: describe purpose |
-| `Instant` | TODO: describe purpose |
-| `ArrayList` | TODO: describe purpose |
-| `LinkedHashMap` | TODO: describe purpose |
-| `LinkedHashSet` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
-| `Map` | TODO: describe purpose |
-| `Optional` | TODO: describe purpose |
-| `Set` | TODO: describe purpose |
-| `ReentrantLock` | TODO: describe purpose |
-| `Stream` | TODO: describe purpose |
+| [`ModConfig`](../config/ModConfig.md) | Supplies the temporary directory (`tmpRoot()`) where commit trees are assembled. |
+| [`DebugLogger`](../debug/DebugLogger.md) | Emits the one-line commit summary. |
+| [`BlockPos`](../model/BlockPos.md) | Carries the selection origin and previous origin in metadata. |
+| [`BuildDiff`](../model/BuildDiff.md) | Computes coordinate-level added/changed/removed blocks and entity changes. |
+| [`Cuboid`](../model/Cuboid.md) | Converted to origin-relative bounds for `meta.json`. |
+| [`Selection`](../model/Selection.md) | Unit of staging and commit; supplies name, owner, cuboids and world. |
+| [`Snapshot`](../model/Snapshot.md) | Staged and previously committed block/entity data compared and written as CSV. |
+| [`CommitMeta`](../repo/CommitMeta.md) | Reads the old selection origin and writes new per-selection metadata. |
+| [`RepoManager`](../repo/RepoManager.md) | Resolves the `RepoService` for the request's world id. |
+| [`RepoService`](../repo/RepoService.md) | Provides the repository path and the atomic `commitWorkspace` write. |
+| [`QuadrantCsvReader`](../serialization/QuadrantCsvReader.md) | Reads the previous HEAD selection tree into a `Snapshot` for diffing. |
+| [`QuadrantCsvWriter`](../serialization/QuadrantCsvWriter.md) | Serializes the staged snapshot into the temporary CSV tree. |
+| [`StagedSelection`](../staging/StagedSelection.md) | Handle returned by `StagingService.load`, carrying the snapshot. |
+| [`StagingService`](../staging/StagingService.md) | Loads staged snapshots and deletes them after a successful commit. |
+| `IOException` | Caught around temp-tree work and wrapped in `CommitException`. |
+| `Files` | Creates temp dirs, walks/copies files and reads meta bytes. |
+| `Path` | Locates repository selection directories and temporary trees. |
+| `Instant` | Timestamps `CommitMeta.createdAt`. |
+| `ArrayList` | Accumulates relative cuboids and selection-name lists. |
+| `LinkedHashMap` | Preserves deterministic path order in the commit file map. |
+| `LinkedHashSet` | Preserves deterministic order of repository directories to replace. |
+| `List` | Holds request selections, committed names and metadata cuboid lists. |
+| `Map` | Maps repository-relative path to file bytes for `commitWorkspace`. |
+| `Optional` | Represents a missing old `meta.json` and an absent staged snapshot. |
+| `Set` | Collects the selection directories replaced in the repository. |
+| `ReentrantLock` | Serializes overlapping commit operations. |
+| `Stream` | Walks temporary trees for file collection and cleanup. |
 
 ---
 
@@ -121,12 +121,12 @@ private final ReentrantLock commitLock;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `repos` | [`RepoManager`](../repo/RepoManager.md) | TODO: describe |
-| `staging` | [`StagingService`](../staging/StagingService.md) | TODO: describe |
-| `config` | [`ModConfig`](../config/ModConfig.md) | TODO: describe |
-| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe |
-| `modVersion` | `String` | TODO: describe |
-| `commitLock` | `ReentrantLock` | TODO: describe |
+| `repos` | [`RepoManager`](../repo/RepoManager.md) | Resolves and caches the `RepoService` for the request world. |
+| `staging` | [`StagingService`](../staging/StagingService.md) | Durable per-world/player staging area read at commit time. |
+| `config` | [`ModConfig`](../config/ModConfig.md) | Supplies `tmpRoot()`; no other config values are used here. |
+| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | Logs a concise summary after a successful commit. |
+| `modVersion` | `String` | Stamped into `meta.json` as `pluginVersion`. |
+| `commitLock` | `ReentrantLock` | Held for the entire commit, including all file and JGit IO. |
 
 ---
 
@@ -137,7 +137,7 @@ public CommitService(RepoManager repos, StagingService staging, ModConfig config
                          DebugLogger debug, String modVersion)
 ```
 
-TODO: Provide detailed design explanation for `CommitService`.
+Stores the five collaborators; the lock is created eagerly and the constructor performs no IO. The instance is intended to be created once per client and shared, with `commitLock` providing serialization.
 
 ---
 
@@ -147,7 +147,7 @@ TODO: Provide detailed design explanation for `CommitService`.
 public CommitResult commit(CommitRequest request)
 ```
 
-TODO: Provide detailed design explanation for `commit`.
+Under `commitLock`, `commit` validates that the world's repository is initialized and, unless `allowEmpty`, that selections were supplied, then for each selection loads its `StagedSelection`, reads the committed CSV tree and `meta.json` from `repo.path()/selection` (or an empty snapshot) and computes `BuildDiff.between(oldSnapshot, stagedSnapshot)`, skipping the selection when the diff is empty and the origin did not move. For every changed selection it calls `buildMeta`, writes the staged snapshot's CSV tree and `meta.json` into a fresh `commit-*` directory under `config.tmpRoot()`, copies those files into a path-to-bytes map keyed `<selection>/...`, and records the selection directory in a replacement set, deleting each temp directory in a `finally` block. It then builds the message, calls `RepoService.commitWorkspace(files, directories, message, allowEmpty || committedNames.isEmpty())` — throwing `CommitException` if that returns `null` — deletes all staged snapshots of the requested selections, logs, and returns a `CommitResult`, while `IOException` becomes a `CommitException` and the lock is always released.
 
 ---
 
@@ -158,7 +158,7 @@ private CommitMeta buildMeta(CommitRequest request, Selection selection, Snapsho
                                  BlockPos previousOrigin)
 ```
 
-TODO: Provide detailed design explanation for `buildMeta`.
+`buildMeta` translates each absolute cuboid into coordinates relative to `snapshot.origin()`, computes `dimensions` as `WxHxD` from the selection bounds (falling back to `snapshot.dimensions()` when bounds are unavailable), and sets `reorigined` when `previousOrigin` is non-null and differs from the current origin. It fills the remaining `CommitMeta` fields from the request (world, player identity, game mode), the format version and mod version, the snapshot counts and `Instant.now()`.
 
 ---
 
@@ -169,7 +169,7 @@ private String commitMessage(CommitRequest request, List<String> committedNames,
                                  long added, long changed, long removed, long entityChanges)
 ```
 
-TODO: Provide detailed design explanation for `commitMessage`.
+The first line is the trimmed user message when supplied, otherwise `player: empty commit`, `player: <selection> - N blocks changed` for one committed selection, or `player: N selections - N blocks changed` for several. It always appends the machine-readable body (`MinecraftGit-Commit: v1`, comma-separated selections, `Changes: +a ~c -r`, `Entities: n`), which is exactly what `CommitResult.message()` returns.
 
 ---
 
@@ -179,7 +179,7 @@ TODO: Provide detailed design explanation for `commitMessage`.
 private static void collectFiles(Path root, String selection, Map<String, byte[]> files)
 ```
 
-TODO: Provide detailed design explanation for `collectFiles`.
+Walks `root` with `Files.walk`, filters regular files, normalizes Windows separators to `/`, and inserts each file's bytes into the output map as `<selection>/<relative>`; the stream is closed by try-with-resources and `IOException` propagates to `commit`, which wraps it.
 
 ---
 
@@ -189,6 +189,6 @@ TODO: Provide detailed design explanation for `collectFiles`.
 private static void deleteRecursively(Path path)
 ```
 
-TODO: Provide detailed design explanation for `deleteRecursively`.
+Returns immediately when the path does not exist, otherwise walks the tree, sorts entries in reverse order (children before parents) and deletes each with `Files.deleteIfExists`. Failures are swallowed deliberately because temp cleanup is best-effort and must not fail a commit.
 
 ---

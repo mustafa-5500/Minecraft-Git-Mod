@@ -20,7 +20,15 @@
 
 ## Usage
 
-TODO: Add usage examples for `DebugLogger`.
+Create the logger once during client initialisation from `config.debug` and `config.debugBlocks`, and share it through `GitServices`; `/git config debug` and `/git config blocks` flip the flags at runtime. The file is only created and opened on the first enabled `log` call, and `GitServices.close()` closes it when the client stops.
+
+```java
+DebugLogger debug = new DebugLogger(config.logsRoot(), config.debug, config.debugBlocks);
+debug.log("capture", "Capturing '%s'", selection.name());
+debug.blockRead("world__overworld", 0, 64, 0, "minecraft:stone");
+// SnapshotService and ApplyService also emit "capture" and "block-write" lines.
+debug.close(); // GitServices.close() does this on CLIENT_STOPPING
+```
 
 Optional, per-session debug log. Block-level logging is opt-in because a
 single large capture would otherwise write millions of lines.
@@ -29,14 +37,14 @@ single large capture would otherwise write millions of lines.
 
 ## Fields
 
-- `STAMP` (`DateTimeFormatter`) — TODO: describe field
-- `logsRoot` (`Path`) — TODO: describe field
-- `file` (`Path`) — TODO: describe field
-- `enabled` (`volatile boolean`) — TODO: describe field
-- `blocks` (`volatile boolean`) — TODO: describe field
-- `writer` (`BufferedWriter`) — TODO: describe field
-- `buffered` (`int`) — TODO: describe field
-- `failed` (`boolean`) — TODO: describe field
+- `STAMP` (`DateTimeFormatter`) — Immutable `HH:mm:ss.SSS` formatter built with `Locale.ROOT` and the system-default zone; it prefixes every log line.
+- `logsRoot` (`Path`) — Directory supplied to the constructor that receives the log file; it is created lazily by the first write and may not exist until then.
+- `file` (`Path`) — Fixed per-session path `debug-<epochMillis>.log` resolved against `logsRoot` at construction; it does not change while the logger lives.
+- `enabled` (`volatile boolean`) — Master switch, initialised from `config.debug`; when false, `log` and therefore both block helpers return immediately. Volatile so `/git config debug` can toggle it from the client thread.
+- `blocks` (`volatile boolean`) — Opt-in per-block switch, initialised from `config.debugBlocks`; it gates only `blockRead` and `blockWrite` and is effective only when `enabled` is also true.
+- `writer` (`BufferedWriter`) — Lazily opened UTF-8 appender, `null` until the first enabled line and again after `close()`; all access is guarded by the instance lock.
+- `buffered` (`int`) — Number of lines written since the last flush; the writer is flushed when it reaches 32, bounding data loss on a crash.
+- `failed` (`boolean`) — Set once after an `IOException` so a broken log destination produces a single warning instead of one per line.
 
 ---
 
@@ -48,14 +56,14 @@ public DebugLogger(Path logsRoot, boolean enabled, boolean blocks)
 ```
 
 ### Description
-TODO: Describe what `DebugLogger` does.
+Stores the log directory and the two initial switches and precomputes the session file name from `System.currentTimeMillis()`. It performs no IO: directories and the file are not created until the first enabled `log` call, so constructing a disabled logger is free.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `logsRoot` | `Path` | TODO: describe |
-| `enabled` | `boolean` | TODO: describe |
-| `blocks` | `boolean` | TODO: describe |
+| `logsRoot` | `Path` | Directory under the mod data root that receives `debug-<epochMillis>.log`; created on first write. |
+| `enabled` | `boolean` | Initial value of the master switch, normally `config.debug`. |
+| `blocks` | `boolean` | Initial value of the per-block switch, normally `config.debugBlocks`; only matters while `enabled` is true. |
 
 ### Returns
 `DebugLogger` instance.
@@ -70,13 +78,13 @@ public Path file()
 ```
 
 ### Description
-TODO: Describe what `file` does.
+Returns the precomputed session log path so commands can show the player where output will go. The accessor does no IO and returns a path whether or not the file has been created yet.
 
 ### Parameters
 None.
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — the log file path `logsRoot/debug-<epochMillis>.log`.
 
 ---
 
@@ -88,13 +96,13 @@ public boolean enabled()
 ```
 
 ### Description
-TODO: Describe what `enabled` does.
+Returns the current master switch. It is a volatile read and does not touch the writer or the file system.
 
 ### Parameters
 None.
 
 ### Returns
-`boolean` — TODO: describe return value.
+`boolean` — `true` when normal log lines are currently written.
 
 ---
 
@@ -106,12 +114,12 @@ public void setEnabled(boolean enabled)
 ```
 
 ### Description
-TODO: Describe what `setEnabled` does.
+Updates the master switch, which `/git config debug` calls before saving the config. It neither opens nor closes the writer and does not flush, so disabling logging stops new lines while an already open writer stays open until `close()`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `enabled` | `boolean` | TODO: describe |
+| `enabled` | `boolean` | New master switch value; `false` suppresses every subsequent log line, `true` re-enables them. |
 
 ### Returns
 `void`
@@ -126,12 +134,12 @@ public void setBlocks(boolean blocks)
 ```
 
 ### Description
-TODO: Describe what `setBlocks` does.
+Updates the per-block switch used by `blockRead` and `blockWrite`. It does not flush or write anything itself, and per-block lines still require `enabled` to be true.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `blocks` | `boolean` | TODO: describe |
+| `blocks` | `boolean` | `true` to emit per-block `block-read`/`block-write` lines, `false` to suppress them. |
 
 ### Returns
 `void`
@@ -146,14 +154,14 @@ public void log(String category, String format, Object... args)
 ```
 
 ### Description
-TODO: Describe what `log` does.
+Writes one synchronised line in the form `HH:mm:ss.SSS [category] message`, opening the UTF-8 file in append mode and writing a `# MinecraftGit debug log <Instant>` header on first use. Arguments are formatted with `String.format(Locale.ROOT, ...)` only when at least one is supplied, the writer is flushed every 32 lines, and an `IOException` is swallowed after one warning through `MinecraftGit.LOGGER`. It is safe to call from the client thread, the integrated-server thread or an IO thread, but it performs synchronous buffered file IO.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `category` | `String` | TODO: describe |
-| `format` | `String` | TODO: describe |
-| `args` | `Object...` | TODO: describe |
+| `category` | `String` | Short tag placed in brackets, for example `capture`, `block-read` or `block-write`. |
+| `format` | `String` | Message template, or the literal message when no arguments are given. |
+| `args` | `Object...` | Optional `String.format` arguments passed with `Locale.ROOT`. |
 
 ### Returns
 `void`
@@ -168,16 +176,16 @@ public void blockRead(String world, int x, int y, int z, String state)
 ```
 
 ### Description
-TODO: Describe what `blockRead` does.
+Emits a `block-read` line containing `world x y z state` when the `blocks` switch is on; otherwise it returns immediately. `SnapshotService` calls it for every decoded block during capture, which is why the switch is separate from normal debug logging and off by default.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
-| `x` | `int` | TODO: describe |
-| `y` | `int` | TODO: describe |
-| `z` | `int` | TODO: describe |
-| `state` | `String` | TODO: describe |
+| `world` | `String` | Selection or world name used as the first token of the message. |
+| `x` | `int` | Absolute block X coordinate. |
+| `y` | `int` | Absolute block Y coordinate. |
+| `z` | `int` | Absolute block Z coordinate. |
+| `state` | `String` | Canonical block-state string that was read, for example `minecraft:stone`. |
 
 ### Returns
 `void`
@@ -192,16 +200,16 @@ public void blockWrite(String world, int x, int y, int z, String state)
 ```
 
 ### Description
-TODO: Describe what `blockWrite` does.
+Emits a `block-write` line containing `world x y z state` when the `blocks` switch is on; otherwise it returns immediately. `ApplyService` calls it after each successful block write, using `minecraft:air` for removals.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `world` | `String` | TODO: describe |
-| `x` | `int` | TODO: describe |
-| `y` | `int` | TODO: describe |
-| `z` | `int` | TODO: describe |
-| `state` | `String` | TODO: describe |
+| `world` | `String` | Selection name that identifies the applied build. |
+| `x` | `int` | Absolute block X coordinate. |
+| `y` | `int` | Absolute block Y coordinate. |
+| `z` | `int` | Absolute block Z coordinate. |
+| `state` | `String` | Block state written, or `minecraft:air` for a removal. |
 
 ### Returns
 `void`
@@ -217,7 +225,7 @@ public void close()
 ```
 
 ### Description
-TODO: Describe what `close` does.
+Flushes and closes the writer under the instance lock, swallowing any `IOException` because shutdown is best-effort, then clears the writer so a later enabled line reopens the file in append mode. It is idempotent and is called by `GitServices.close()` on `CLIENT_STOPPING`.
 
 ### Parameters
 None.

@@ -27,7 +27,7 @@
 
 ## Usage
 
-TODO: Describe how `BuildDiff` is instantiated and used.
+`BuildDiff` is created through the static `between` factory; the private constructor guarantees that callers receive lists that are frozen and canonically sorted. `CommitService` compares the last committed snapshot with the staged snapshot to decide whether a selection changed and to accumulate commit totals, while `StatusService` compares HEAD, staged and current captures for staged/working status. The result is read-only and independent of the input snapshots, so it can be passed between services or reported directly.
 
 ---
 
@@ -54,10 +54,10 @@ import java.util.Map;
 
 | Import | Purpose |
 |--------|---------|
-| `ArrayList` | TODO: describe purpose |
-| `LinkedHashMap` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
-| `Map` | TODO: describe purpose |
+| `ArrayList` | Accumulates the added/changed/removed block lists and builds mutable copies of the entity lists inside `between`. |
+| `LinkedHashMap` | Preserves argument order when `mergeBlocks` combines coordinate maps. |
+| `List` | Declares the immutable change lists exposed by the accessors. |
+| `Map` | Indexes snapshots by relative coordinate and is the return type of `mergeBlocks`. |
 
 ---
 
@@ -67,6 +67,7 @@ import java.util.Map;
 public final class BuildDiff {
 ```
 
+`final` plus a private constructor make `BuildDiff` a closed value type: callers cannot subclass it or construct inconsistent instances, and `between` is the only factory. Every change list is frozen before the instance escapes, so a diff can be reported, cached or handed to another service without copying. Because the keys are relative coordinates, comparisons are independent of the world origin.
 
 ---
 
@@ -83,12 +84,12 @@ private final int unchanged;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `added` | `List<BlockSnapshot>` | TODO: describe |
-| `changed` | `List<BlockSnapshot>` | TODO: describe |
-| `removed` | `List<BlockSnapshot>` | TODO: describe |
-| `entitiesAdded` | `List<EntitySnapshot>` | TODO: describe |
-| `entitiesRemoved` | `List<EntitySnapshot>` | TODO: describe |
-| `unchanged` | `int` | TODO: describe |
+| `added` | `List<BlockSnapshot>` | Immutable, sorted after-state blocks for coordinates new in `after`. |
+| `changed` | `List<BlockSnapshot>` | Immutable, sorted after-state blocks whose coordinate existed but whose payload differs. |
+| `removed` | `List<BlockSnapshot>` | Immutable, sorted before-state blocks for coordinates dropped from `after`. |
+| `entitiesAdded` | `List<EntitySnapshot>` | Immutable, sorted entities unmatched in `before`. |
+| `entitiesRemoved` | `List<EntitySnapshot>` | Immutable, sorted entities unmatched in `after`. |
+| `unchanged` | `int` | Count of identical block coordinates; it is a scalar because there is no per-coordinate list. |
 
 ---
 
@@ -99,7 +100,7 @@ private BuildDiff(List<BlockSnapshot> added, List<BlockSnapshot> changed, List<B
                       List<EntitySnapshot> entitiesAdded, List<EntitySnapshot> entitiesRemoved, int unchanged)
 ```
 
-TODO: Provide detailed design explanation for `BuildDiff`.
+The private constructor only copies and freezes: `List.copyOf` rejects null lists and null elements and makes each list immutable, while `unchanged` is stored by value. It performs no sorting or validation because `between` has already produced ordered lists, keeping the constructor a trivial data holder and confining diff semantics to the factory.
 
 ---
 
@@ -109,7 +110,7 @@ TODO: Provide detailed design explanation for `BuildDiff`.
 public static BuildDiff between(Snapshot before, Snapshot after)
 ```
 
-TODO: Provide detailed design explanation for `between`.
+The factory converts each non-null snapshot to a `LinkedHashMap<BlockPos, BlockSnapshot>` via `byRelative()`; a `null` snapshot becomes `Map.of()`. It scans the after map to classify missing keys as `added`, unequal keys (`sameBlock`) as `changed`, and equal keys into the `unchanged` counter, then scans the old map to collect keys absent from the new map as `removed`. Absence is meaningful: a coordinate present only in `after` is added, one present only in `before` is removed, and a coordinate that still exists but became `minecraft:air` is merely changed, preserving the tracked-air versus untracked-empty distinction. Entities are handled by value: a mutable copy of the before list is built, each after entity is removed from that copy (record equality), entities that fail to remove are additions, and the remainder is removals. Every list is finally sorted with the canonical `ORDER` comparators, making output stable even though the coordinate maps are insertion-ordered, and the private constructor freezes the result.
 
 ---
 
@@ -119,7 +120,7 @@ TODO: Provide detailed design explanation for `between`.
 private static boolean sameBlock(BlockSnapshot a, BlockSnapshot b)
 ```
 
-TODO: Provide detailed design explanation for `sameBlock`.
+Private helper implementing the final-state comparison: `blockData` strings must be equal and block-entity payloads must be equal via `Objects.equals`, with `null` meaning no payload. Coordinates are intentionally not compared because the map key already establishes position; as a consequence, a coordinate whose block state is unchanged but whose block-entity payload changed still counts as `changed`.
 
 ---
 
@@ -131,6 +132,8 @@ public static Map<BlockPos, BlockSnapshot> mergeBlocks(Map<BlockPos, BlockSnapsh
 
 Merge maps keyed by relative coordinate, final state wins.
 
+The implementation is deliberately shallow: one `LinkedHashMap` receives `putAll` from each map in argument order, so the final state of each coordinate wins and the first insertion position of a key is retained for deterministic iteration. There is no three-way merge, conflict detection or coordinate diffing here; commit-time reconciliation compares whole snapshots in `between`, and `ApplyPlan` derives placements and removals from relative-coordinate maps instead.
+
 ---
 
 ## 9. `added()`
@@ -139,7 +142,7 @@ Merge maps keyed by relative coordinate, final state wins.
 public List<BlockSnapshot> added()
 ```
 
-TODO: Provide detailed design explanation for `added`.
+Accessor only; the list is already immutable, sorted and null-free after `List.copyOf`. Commit code uses its size for totals, while serialization can use the entries to know which coordinates are genuinely new relative to the previous commit.
 
 ---
 
@@ -149,7 +152,7 @@ TODO: Provide detailed design explanation for `added`.
 public List<BlockSnapshot> changed()
 ```
 
-TODO: Provide detailed design explanation for `changed`.
+Accessor for modified coordinates, holding the after state so a writer can emit the new block data without consulting the source snapshot. Each entry is unique by relative coordinate because the after map is keyed that way.
 
 ---
 
@@ -159,7 +162,7 @@ TODO: Provide detailed design explanation for `changed`.
 public List<BlockSnapshot> removed()
 ```
 
-TODO: Provide detailed design explanation for `removed`.
+Accessor for deleted coordinates, holding the before state because the after snapshot has no block at that key. Consumers use these entries to clear the coordinate in the world or to describe the deletion in a commit message.
 
 ---
 
@@ -169,7 +172,7 @@ TODO: Provide detailed design explanation for `removed`.
 public List<EntitySnapshot> entitiesAdded()
 ```
 
-TODO: Provide detailed design explanation for `entitiesAdded`.
+Accessor for entity additions. Entity identity is the whole `EntitySnapshot` record (position, rotation, type and data) rather than a UUID, so a moved or edited entity is reported here instead of in a hypothetical changed list.
 
 ---
 
@@ -179,7 +182,7 @@ TODO: Provide detailed design explanation for `entitiesAdded`.
 public List<EntitySnapshot> entitiesRemoved()
 ```
 
-TODO: Provide detailed design explanation for `entitiesRemoved`.
+Accessor for entity removals; it is the leftover of the before-list copy after matching after entities were removed. A moved entity therefore contributes one entry to this list and one to `entitiesAdded`.
 
 ---
 
@@ -189,7 +192,7 @@ TODO: Provide detailed design explanation for `entitiesRemoved`.
 public int unchanged()
 ```
 
-TODO: Provide detailed design explanation for `unchanged`.
+Exposes the counter accumulated during the after-map scan, reporting how much of the build is untouched. It is stored separately because it has no per-coordinate list, and entity matching does not affect it.
 
 ---
 
@@ -199,7 +202,7 @@ TODO: Provide detailed design explanation for `unchanged`.
 public long totalBlockChanges()
 ```
 
-TODO: Provide detailed design explanation for `totalBlockChanges`.
+Adds the three block list sizes with `long` arithmetic to avoid overflow on very large builds, providing one aggregate figure for callers that want it. It excludes entity changes by design; current commit and status code reads the individual lists.
 
 ---
 
@@ -209,7 +212,7 @@ TODO: Provide detailed design explanation for `totalBlockChanges`.
 public long totalEntityChanges()
 ```
 
-TODO: Provide detailed design explanation for `totalEntityChanges`.
+Adds `entitiesAdded().size()` and `entitiesRemoved().size()` as a `long`; a moved entity contributes two because it appears in both lists.
 
 ---
 
@@ -219,7 +222,7 @@ TODO: Provide detailed design explanation for `totalEntityChanges`.
 public boolean isEmpty()
 ```
 
-TODO: Provide detailed design explanation for `isEmpty`.
+Checks the five change lists for emptiness and ignores `unchanged`; it is the 'nothing changed' gate used by commit and status code. It is intentionally independent of origin metadata, which commit code compares separately for re-origin commits.
 
 ---
 
@@ -229,6 +232,6 @@ TODO: Provide detailed design explanation for `isEmpty`.
 public String summary()
 ```
 
-TODO: Provide detailed design explanation for `summary`.
+Formats only the three block counts into a single line for command output. Callers that need entity counts read `totalEntityChanges()` separately, so the summary can look empty while entity changes exist.
 
 ---

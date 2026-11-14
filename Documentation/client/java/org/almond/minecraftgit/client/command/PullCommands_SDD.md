@@ -30,17 +30,17 @@
 
 ## Usage
 
-TODO: Describe how `PullCommands` is instantiated and used.
+`PullCommands` is never instantiated: `GitCommand` calls the static `attach(root, services)` once when client commands are registered, and each handler then receives the shared `GitServices`. Usage is through `/git pull [name]`, `/git pull --remote <remote> [name]`, `/git pull --abort [name]` and `/git checkout <commit> [name]`.
 
 ---
 
 ## 1. Overview
 
-{@code /git pull} and {@code /git checkout}.
-<p>Pull is fast-forward-only and single-player-only for the apply step. The
+`/git pull` and `/git checkout`.
+Pull is fast-forward-only and single-player-only for the apply step. The
 local branch is moved only after every selected build has been written, so a
 failed world write never leaves Git ahead of the world. A pre-apply backup is
-written for each selection and can be restored with {@code --abort}.</p>
+written for each selection and can be restored with `--abort`.
 
 ---
 
@@ -83,34 +83,34 @@ import java.util.List;
 
 | Import | Purpose |
 |--------|---------|
-| `StringArgumentType` | TODO: describe purpose |
-| `LiteralArgumentBuilder` | TODO: describe purpose |
-| `ClientCommandManager` | TODO: describe purpose |
-| `FabricClientCommandSource` | TODO: describe purpose |
-| `ChatFormatting` | TODO: describe purpose |
-| `Minecraft` | TODO: describe purpose |
-| `Component` | TODO: describe purpose |
-| `Player` | TODO: describe purpose |
-| [`BackupService`](../../../../../../../main/java/org/almond/minecraftgit/backup/BackupService.md) | TODO: describe purpose |
-| [`GitServices`](../GitServices.md) | TODO: describe purpose |
-| [`WorldContext`](../WorldContext.md) | TODO: describe purpose |
-| [`BlockPos`](../../../../../../../main/java/org/almond/minecraftgit/model/BlockPos.md) | TODO: describe purpose |
-| [`Cuboid`](../../../../../../../main/java/org/almond/minecraftgit/model/Cuboid.md) | TODO: describe purpose |
-| [`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) | TODO: describe purpose |
-| [`Snapshot`](../../../../../../../main/java/org/almond/minecraftgit/model/Snapshot.md) | TODO: describe purpose |
-| [`CommitMeta`](../../../../../../../main/java/org/almond/minecraftgit/repo/CommitMeta.md) | TODO: describe purpose |
-| [`PullPlan`](../../../../../../../main/java/org/almond/minecraftgit/repo/PullPlan.md) | TODO: describe purpose |
-| [`RepoMetadata`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoMetadata.md) | TODO: describe purpose |
-| [`RepoProgress`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoProgress.md) | TODO: describe purpose |
-| [`RepoService`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoService.md) | TODO: describe purpose |
-| [`SelectionException`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionException.md) | TODO: describe purpose |
-| [`PullException`](../../../../../../../main/java/org/almond/minecraftgit/sync/PullException.md) | TODO: describe purpose |
-| [`PullService`](../../../../../../../main/java/org/almond/minecraftgit/sync/PullService.md) | TODO: describe purpose |
-| [`UserFacingException`](../../../../../../../main/java/org/almond/minecraftgit/util/UserFacingException.md) | TODO: describe purpose |
-| [`ApplyPlan`](../../../../../../../main/java/org/almond/minecraftgit/world/ApplyPlan.md) | TODO: describe purpose |
-| [`ApplyResult`](../../../../../../../main/java/org/almond/minecraftgit/world/ApplyResult.md) | TODO: describe purpose |
-| `ArrayList` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
+| `StringArgumentType` | Brigadier string argument type for the selection-name, remote and revision arguments. |
+| `LiteralArgumentBuilder` | Builder type for the `/git` command tree the subcommands are attached to. |
+| `ClientCommandManager` | Fabric client command factory (`literal`, `argument`) used to build the tree. |
+| `FabricClientCommandSource` | Client command source carrying the player, client and feedback/error channels. |
+| `ChatFormatting` | Chat colour constants; not referenced here because all output goes through `Messages`. |
+| `Minecraft` | Client instance used to schedule apply completion back onto the render thread. |
+| `Component` | Chat component type; not referenced directly because `Messages` builds the components. |
+| `Player` | The issuing player, supplying UUID, name and current block position. |
+| [`BackupService`](../../../../../../../main/java/org/almond/minecraftgit/backup/BackupService.md) | Provides the `Backup` record (snapshot plus file) restored by `--abort`. |
+| [`GitServices`](../GitServices.md) | Service graph: repositories, pull, apply, selections, backups, config, messages and the IO executor. |
+| [`WorldContext`](../WorldContext.md) | World id and dimension plus the single-player check that gates apply/backup. |
+| [`BlockPos`](../../../../../../../main/java/org/almond/minecraftgit/model/BlockPos.md) | Mod block coordinate type used for selection origins and the player's position. |
+| [`Cuboid`](../../../../../../../main/java/org/almond/minecraftgit/model/Cuboid.md) | Build region used when adding cuboids to a pulled or checked-out selection. |
+| [`Selection`](../../../../../../../main/java/org/almond/minecraftgit/model/Selection.md) | Local selection model supplying name, origin, cuboids and tracked state. |
+| [`Snapshot`](../../../../../../../main/java/org/almond/minecraftgit/model/Snapshot.md) | Block/entity snapshot read from the remote commit and local HEAD, and used to derive cuboid bounds. |
+| [`CommitMeta`](../../../../../../../main/java/org/almond/minecraftgit/repo/CommitMeta.md) | Commit metadata (origin, relative cuboids); read by `PullService`, so this import is unused here. |
+| [`PullPlan`](../../../../../../../main/java/org/almond/minecraftgit/repo/PullPlan.md) | Fetch result with local/remote heads, merge base, branch and up-to-date/fast-forward/diverged type. |
+| [`RepoMetadata`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoMetadata.md) | Per-world metadata providing the default remote name. |
+| [`RepoProgress`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoProgress.md) | Fetch progress callback; `RepoProgress.NOOP` is passed to `planPull`. |
+| [`RepoService`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoService.md) | Per-world repository: plans the pull, resolves revisions, exports selections and fast-forwards. |
+| [`SelectionException`](../../../../../../../main/java/org/almond/minecraftgit/selection/SelectionException.md) | User-facing error for a missing player or selection, reported by `CommandSupport`. |
+| [`PullException`](../../../../../../../main/java/org/almond/minecraftgit/sync/PullException.md) | User-facing pull/checkout error (multiplayer, divergence, unknown revision). |
+| [`PullService`](../../../../../../../main/java/org/almond/minecraftgit/sync/PullService.md) | Prepares remote and local-HEAD snapshots in a temporary directory and cleans them up. |
+| [`UserFacingException`](../../../../../../../main/java/org/almond/minecraftgit/util/UserFacingException.md) | Base type for errors reported verbatim by `CommandSupport`; not referenced directly here. |
+| [`ApplyPlan`](../../../../../../../main/java/org/almond/minecraftgit/world/ApplyPlan.md) | Absolute placements and removals computed between two snapshots, including backup restores. |
+| [`ApplyResult`](../../../../../../../main/java/org/almond/minecraftgit/world/ApplyResult.md) | Apply outcome (counts, backup file, warnings) reported after a world write. |
+| `ArrayList` | Mutable list of relative cuboids in `addCuboids`. |
+| `List` | Selection, prepared-pull and remote-name lists. |
 
 ---
 
@@ -120,6 +120,7 @@ import java.util.List;
 public final class PullCommands {
 ```
 
+The class is `final` and holds only static members: it owns no repository or world state, receives `GitServices` and the command source per invocation, and keeps the pull state machine explicit by passing the plan, prepared pulls and index through the handler chain.
 
 ---
 
@@ -129,7 +130,7 @@ public final class PullCommands {
 private PullCommands()
 ```
 
-TODO: Provide detailed design explanation for `PullCommands`.
+The private constructor makes the class a pure static utility: there is no per-command state, and every dependency arrives through the parameters of `attach` and is passed down the handler chain. This keeps registration cheap and avoids holding a `Minecraft` or service reference in a static field.
 
 ---
 
@@ -139,7 +140,7 @@ TODO: Provide detailed design explanation for `PullCommands`.
 public static void attach(LiteralArgumentBuilder<FabricClientCommandSource> root, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `attach`.
+`attach` adds four pull leaves (bare `pull`, `--abort` with optional `name`, `--remote` with required `remote` and optional `name`, and `name` alone) plus `checkout <commit> [name]` to the `/git` root. Argument order is fixed so `--remote` precedes the selection name, and every selection-name argument uses a suggestion provider built from `SelectionService.list` for the current player and world.
 
 ---
 
@@ -150,7 +151,7 @@ private static int pull(FabricClientCommandSource source, GitServices services,
                             String onlySelection, String requestedRemote)
 ```
 
-TODO: Provide detailed design explanation for `pull`.
+`pull` is the pipeline entry: it validates the player, single-player world and initialized repository, resolves the remote via `remoteFor`, snapshots the player's `BlockPos` origin and selection list, and sends `Fetching from ...`. It then runs `repo.planPull(remote, RepoProgress.NOOP)` on the IO executor through `CommandSupport.complete` and forwards the resulting `PullPlan` to `onPlan` on the client thread; validation failures are reported by `runInt`, which returns `0`.
 
 ---
 
@@ -162,7 +163,7 @@ private static void onPlan(FabricClientCommandSource source, GitServices service
                                RepoService repo, PullPlan plan, String onlySelection)
 ```
 
-TODO: Provide detailed design explanation for `onPlan`.
+`onPlan` branches on the plan type: `UP_TO_DATE` prints the remote/branch and stops, while `!canFastForward()` (a `DIVERGED` history) throws `PullException` because version 1 never merges — the message tells the user to push or clone into a fresh world. For `FAST_FORWARD` it announces the plan and calls `PullService.prepare` asynchronously; an empty prepared list (remote head with no selections) jumps to `finishPull`, otherwise `applyNext(..., 0)` starts the writes. `prepare` refuses a selection filter when the remote head contains more than one selection, because fast-forwarding the branch would otherwise leave the unapplied selections in HEAD but not in the world; partial pulls are therefore rejected in version 1.
 
 ---
 
@@ -174,7 +175,7 @@ private static void applyNext(FabricClientCommandSource source, GitServices serv
                                   List<PullService.PreparedPull> prepared, int index)
 ```
 
-TODO: Provide detailed design explanation for `applyNext`.
+`applyNext` drives the apply phase recursively. For the pull at `index` it obtains the selection through `ensureSelection`, builds `ApplyPlan.between(selection, localHead, localOrigin, target, localOrigin, true)` and submits it to `ApplyService.apply`, whose completion is rescheduled with `client.execute` so the result is handled on the render thread. A callback after the player left the world is dropped, an error routes to `fail` (aborting the whole pull and leaving the branch untouched), and success prints the result and recurses with `index + 1`; reaching `prepared.size()` calls `finishPull`. Synchronous `RuntimeException`s also go to `fail`, which is what makes a partial pull impossible.
 
 ---
 
@@ -185,7 +186,7 @@ private static Selection ensureSelection(GitServices services, WorldContext worl
                                              PullService.PreparedPull prepared)
 ```
 
-TODO: Provide detailed design explanation for `ensureSelection`.
+`ensureSelection` reuses `prepared.localSelection()` only if it still exists in `SelectionService`, otherwise it creates a selection at `prepared.localOrigin()` with the player's name. An existing selection without an origin receives the prepared local origin and is saved. When the selection has no cuboids, `addCuboids` reconstructs them from the commit metadata or target bounds, after which the selection is marked tracked and re-read so the caller sees the persisted state.
 
 ---
 
@@ -196,7 +197,7 @@ private static void addCuboids(GitServices services, WorldContext world, Player 
                                    Selection selection, PullService.PreparedPull prepared, boolean created)
 ```
 
-TODO: Provide detailed design explanation for `addCuboids`.
+Relative cuboids come from `CommitMeta.relativeCuboids()`; when the commit carries none, the bounding box of the target snapshot's relative block coordinates is used as a single cuboid. Each cuboid is translated by `prepared.localOrigin()` and added through `SelectionService.addCuboid`. If an add fails and the selection was created by this pull, the selection is deleted before the exception is rethrown, so a failed pull leaves no half-built selection.
 
 ---
 
@@ -207,7 +208,7 @@ private static void finishPull(FabricClientCommandSource source, GitServices ser
                                    RepoService repo, PullPlan plan, List<PullService.PreparedPull> prepared)
 ```
 
-TODO: Provide detailed design explanation for `finishPull`.
+`finishPull` runs only after every write succeeded: `repo.fastForward(plan)` and `PullService.cleanup(prepared)` execute together on the IO executor, and the client-thread callback reports the abbreviated remote head and number of selections. A `false` fast-forward means the build is in the world but the branch did not move, which is reported as an explicit error rather than success; an empty prepared list produces the 'remote has no selections' wording.
 
 ---
 
@@ -218,7 +219,7 @@ private static void fail(FabricClientCommandSource source, GitServices services,
                              List<PullService.PreparedPull> prepared, Throwable error)
 ```
 
-TODO: Provide detailed design explanation for `fail`.
+`fail` schedules `PullService.cleanup(prepared)` on the IO executor for best-effort temp-directory removal and immediately reports `Pull failed; the local branch was not moved.` with the error message. Because `fastForward` has not run, Git stays behind the world and the pull can be retried after the cause is fixed.
 
 ---
 
@@ -228,7 +229,7 @@ TODO: Provide detailed design explanation for `fail`.
 private static int abort(FabricClientCommandSource source, GitServices services, String requested)
 ```
 
-TODO: Provide detailed design explanation for `abort`.
+`abort` restores the newest pre-apply backup of one selection: it requires single-player, resolves the selection (argument or active), reads `BackupService.latest`, and builds `ApplyPlan.restore(selection, backup.snapshot())`, whose block snapshots already carry absolute coordinates. The apply future is delivered through `CommandSupport.completeFuture`, so `sendApplyResult` runs on the client thread; a missing backup raises `PullException`.
 
 ---
 
@@ -239,7 +240,7 @@ private static int checkout(FabricClientCommandSource source, GitServices servic
                                 String revision, String requested)
 ```
 
-TODO: Provide detailed design explanation for `checkout`.
+`checkout` applies an arbitrary revision into an existing selection. It requires single-player and an initialized repository, resolves the selection (rejecting one without an origin) and the revision through `RepoService.resolve`, then prepares the commit snapshot with `PullService.prepareCheckout`. The plan uses `selection.origin()` as both the old and new origin so the local build keeps its position instead of jumping to the absolute origin recorded in the commit meta; the checkout temp directory is cleaned asynchronously after the result is delivered.
 
 ---
 
@@ -250,7 +251,7 @@ private static void sendApplyResult(FabricClientCommandSource source, GitService
                                         ApplyResult result)
 ```
 
-TODO: Provide detailed design explanation for `sendApplyResult`.
+Formats the success line from `ApplyResult.summary()`, appending the backup file name when `result.backup()` is non-null, then prints at most the first five warnings at warn level. It assumes it already runs on the client thread, as guaranteed by the apply callbacks.
 
 ---
 
@@ -260,7 +261,7 @@ TODO: Provide detailed design explanation for `sendApplyResult`.
 private static Selection resolve(GitServices services, WorldContext world, Player player, String requested)
 ```
 
-TODO: Provide detailed design explanation for `resolve`.
+Shared selection lookup for `--abort` and `checkout`: a non-blank explicit argument wins, otherwise `SelectionManager.active(world, player)` is used. A still-blank name raises `SelectionException` telling the user to specify or select one; the actual read is `SelectionService.get`, which throws for unknown names.
 
 ---
 
@@ -270,7 +271,7 @@ TODO: Provide detailed design explanation for `resolve`.
 private static String remoteFor(GitServices services, WorldContext world, String requested)
 ```
 
-TODO: Provide detailed design explanation for `remoteFor`.
+Reads `RepoManager.metadata(world.id())` and uses its `remoteName` when set, falling back to `ModConfig.defaultRemote`. An explicit `--remote` value short-circuits the metadata lookup entirely.
 
 ---
 
@@ -280,7 +281,7 @@ TODO: Provide detailed design explanation for `remoteFor`.
 private static Player requirePlayer(FabricClientCommandSource source)
 ```
 
-TODO: Provide detailed design explanation for `requirePlayer`.
+Rejects sources without a player (console, command blocks) with a `SelectionException`; because that is a `UserFacingException`, `CommandSupport.handleError` turns it into a red chat error instead of a stack-trace message.
 
 ---
 
@@ -290,7 +291,7 @@ TODO: Provide detailed design explanation for `requirePlayer`.
 private static WorldContext world(FabricClientCommandSource source)
 ```
 
-TODO: Provide detailed design explanation for `world`.
+Thin wrapper over `WorldContext.current(source.getClient())`; the returned context supplies the world id used for repository and selection lookups, the dimension's `ServerLevel` and the single-player flag that gates apply and backup.
 
 ---
 
@@ -300,7 +301,7 @@ TODO: Provide detailed design explanation for `world`.
 private static String shortId(org.eclipse.jgit.lib.ObjectId id)
 ```
 
-TODO: Provide detailed design explanation for `shortId`.
+Abbreviates an `ObjectId` to eight hex characters (`abbreviate(8)`), or `?` for a null head, keeping chat lines short.
 
 ---
 
@@ -310,6 +311,6 @@ TODO: Provide detailed design explanation for `shortId`.
 private static String message(Throwable error)
 ```
 
-TODO: Provide detailed design explanation for `message`.
+Extracts `error.getMessage()`, substituting the simple class name when the message is null so the failure line is never empty.
 
 ---

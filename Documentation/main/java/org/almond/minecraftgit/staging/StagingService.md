@@ -23,19 +23,19 @@
 
 ## Usage
 
-TODO: Add usage examples for `StagingService`.
+Create it during mod initialisation with the mod data root, a [`SnapshotStore`](SnapshotStore.md) and the logger, then call `stage` from `/git add` and `load` from `/git commit` or `/git status`; `file` exposes the resolved path for diagnostics. A typical sequence is `StagingService staging = new StagingService(root, new SnapshotStore(), debug); staging.stage(selection, snapshot);` followed later by `staging.load(worldId, owner, name)`.
 
-Durable staging area. {@code /git add} writes a captured snapshot here;
-{@code /git commit} reads it later. Files survive restarts and are keyed by
+Durable staging area. `/git add` writes a captured snapshot here;
+`/git commit` reads it later. Files survive restarts and are keyed by
 world id + player + selection, never by repository.
 
 ---
 
 ## Fields
 
-- `root` (`Path`) — TODO: describe field
-- `store` ([`SnapshotStore`](SnapshotStore.md)) — TODO: describe field
-- `debug` ([`DebugLogger`](../debug/DebugLogger.md)) — TODO: describe field
+- `root` (`Path`) — Normalized absolute directory that contains every per-world/per-player staging directory.
+- `store` ([`SnapshotStore`](SnapshotStore.md)) — Serializer used for all staged snapshot reads and writes.
+- `debug` ([`DebugLogger`](../debug/DebugLogger.md)) — Logger for stage, rebase, restrict and unstage operations.
 
 ---
 
@@ -47,14 +47,14 @@ public StagingService(Path root, SnapshotStore store, DebugLogger debug)
 ```
 
 ### Description
-TODO: Describe what `StagingService` does.
+Stores the normalized absolute staging root and the injected store/logger; no directories are created until the first `stage` call writes a snapshot.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `root` | `Path` | TODO: describe |
-| `store` | [`SnapshotStore`](SnapshotStore.md) | TODO: describe |
-| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe |
+| `root` | `Path` | Base directory for staged `.snap` files; normalized to an absolute path. |
+| `store` | [`SnapshotStore`](SnapshotStore.md) | Snapshot serializer; `StagingService` only chooses paths and lifecycle. |
+| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | Logger used for informational staging events. |
 
 ### Returns
 `StagingService` instance.
@@ -69,13 +69,13 @@ public Path root()
 ```
 
 ### Description
-TODO: Describe what `root` does.
+Returns the normalized absolute staging root supplied to the constructor; the value is stable for the lifetime of the service.
 
 ### Parameters
 None.
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — Absolute staging root directory.
 
 ---
 
@@ -87,17 +87,17 @@ public Path file(String worldId, UUID owner, String selection)
 ```
 
 ### Description
-TODO: Describe what `file` does.
+Resolves the staged file for a world/player/selection triple to `root/<safe world>/<owner UUID>/<selection>.snap`, validating the selection name with `Names.requireSelectionName` and sanitizing the world id with `Names.safeWorldName`. An invalid selection name is reported as a [`StagingException`](StagingException.md); the method does not touch the filesystem.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldId` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
-| `selection` | `String` | TODO: describe |
+| `worldId` | `String` | World identifier, sanitized so it is safe as a directory name. |
+| `owner` | `UUID` | Owning player UUID, stringified into the path. |
+| `selection` | `String` | Selection name; 1-32 letters, digits, underscores or hyphens, starting with a letter or digit. |
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — Resolved path of the staged snapshot file, which may not exist yet.
 
 ---
 
@@ -109,16 +109,16 @@ public StagedSelection stage(Selection selection, Snapshot snapshot)
 ```
 
 ### Description
-Write a capture to disk and return the staged handle once it is durable.
+Writes a capture to disk and returns the staged handle once it is durable. It requires a selection with an origin and owner, rebases the snapshot onto the selection origin when needed, and delegates the atomic write to [`SnapshotStore`](SnapshotStore.md); failures surface as [`StagingException`](StagingException.md).
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `selection` | [`Selection`](../model/Selection.md) | TODO: describe |
-| `snapshot` | [`Snapshot`](../model/Snapshot.md) | TODO: describe |
+| `selection` | [`Selection`](../model/Selection.md) | Selection owning the capture; must have an origin and an owner. |
+| `snapshot` | [`Snapshot`](../model/Snapshot.md) | Captured snapshot; rebased onto the selection origin when the origins differ. |
 
 ### Returns
-[`StagedSelection`](StagedSelection.md) — TODO: describe return value.
+[`StagedSelection`](StagedSelection.md) — Durable handle containing the stored snapshot, its file and the staging timestamp.
 
 ---
 
@@ -130,17 +130,17 @@ public Optional<StagedSelection> load(String worldId, UUID owner, String selecti
 ```
 
 ### Description
-TODO: Describe what `load` does.
+Returns the staged snapshot for the triple if the `.snap` file exists, using the file's last-modified time as `stagedAt`; if that attribute cannot be read it falls back to `Instant.now()`. It returns `Optional.empty()` when no regular file exists and lets [`StagingException`](StagingException.md) propagate when a file exists but cannot be decoded.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldId` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
-| `selection` | `String` | TODO: describe |
+| `worldId` | `String` | World identifier used to build the staging path. |
+| `owner` | `UUID` | Owner UUID used to build the staging path. |
+| `selection` | `String` | Selection name used to build the staging path. |
 
 ### Returns
-`Optional<StagedSelection>` — TODO: describe return value.
+`Optional<StagedSelection>` — The staged snapshot when present, otherwise `Optional.empty()`.
 
 ---
 
@@ -152,17 +152,17 @@ public boolean hasStaged(String worldId, UUID owner, String selection)
 ```
 
 ### Description
-TODO: Describe what `hasStaged` does.
+Reports whether a regular staged file exists for the world/player/selection triple, without reading or modifying it.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldId` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
-| `selection` | `String` | TODO: describe |
+| `worldId` | `String` | World identifier used to build the staging path. |
+| `owner` | `UUID` | Owner UUID used to build the staging path. |
+| `selection` | `String` | Selection name used to build the staging path. |
 
 ### Returns
-`boolean` — TODO: describe return value.
+`boolean` — `true` when the staging path is a regular file.
 
 ---
 
@@ -174,16 +174,16 @@ public List<String> stagedNames(String worldId, UUID owner)
 ```
 
 ### Description
-TODO: Describe what `stagedNames` does.
+Lists the selection names that have `.snap` files in the world/player staging directory, stripping the extension and sorting the names alphabetically. It returns an empty list when the directory does not exist and wraps directory-listing I/O failures in [`StagingException`](StagingException.md).
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldId` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
+| `worldId` | `String` | World identifier whose staging directory is listed. |
+| `owner` | `UUID` | Owner UUID whose staging directory is listed. |
 
 ### Returns
-`List<String>` — TODO: describe return value.
+`List<String>` — Sorted selection names with staged snapshots; empty when none exist.
 
 ---
 
@@ -195,14 +195,14 @@ public void unstage(String worldId, UUID owner, String selection)
 ```
 
 ### Description
-TODO: Describe what `unstage` does.
+Deletes the staged file for the triple if it exists and logs the removal; a missing file is not an error. I/O failures are wrapped in [`StagingException`](StagingException.md).
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldId` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
-| `selection` | `String` | TODO: describe |
+| `worldId` | `String` | World identifier of the staged file. |
+| `owner` | `UUID` | Owner UUID of the staged file. |
+| `selection` | `String` | Selection name whose staged snapshot is removed. |
 
 ### Returns
 `void`
@@ -217,15 +217,15 @@ public void rebaseStaged(String worldId, UUID owner, String selection, BlockPos 
 ```
 
 ### Description
-Rebase a staged snapshot after {@code /git selection reorigin}.
+Rebases the staged snapshot after `/git selection reorigin`: it reads the file, calls `Snapshot.rebase(newOrigin)` and atomically rewrites it through [`SnapshotStore`](SnapshotStore.md). It is a no-op when no staged file exists, and read/write failures surface as [`StagingException`](StagingException.md).
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldId` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
-| `selection` | `String` | TODO: describe |
-| `newOrigin` | [`BlockPos`](../model/BlockPos.md) | TODO: describe |
+| `worldId` | `String` | World identifier of the staged file. |
+| `owner` | `UUID` | Owner UUID of the staged file. |
+| `selection` | `String` | Selection name whose staged snapshot is rebased. |
+| `newOrigin` | [`BlockPos`](../model/BlockPos.md) | New absolute origin; relative coordinates are recomputed against it. |
 
 ### Returns
 `void`
@@ -240,16 +240,14 @@ public void restrictStaged(String worldId, UUID owner, Selection selection)
 ```
 
 ### Description
-Trim a staged snapshot after a cuboid is removed: coordinates outside the
-remaining cuboids are untracked and must disappear from the next commit.
-The origin itself does not move here (E2/E6).
+Trim a staged snapshot after a cuboid is removed: blocks and entities outside the remaining cuboids are dropped and the survivors are rebased onto the unchanged selection origin before the file is rewritten. It is a no-op when no staged file exists or the selection has no origin (E2/E6); read/write failures surface as [`StagingException`](StagingException.md).
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldId` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
-| `selection` | [`Selection`](../model/Selection.md) | TODO: describe |
+| `worldId` | `String` | World identifier of the staged file. |
+| `owner` | `UUID` | Owner UUID of the staged file. |
+| `selection` | [`Selection`](../model/Selection.md) | Selection whose current cuboids define what is retained; its origin does not move. |
 
 ### Returns
 `void`
@@ -264,14 +262,14 @@ public void deleteAll(String worldId, UUID owner, String selection)
 ```
 
 ### Description
-TODO: Describe what `deleteAll` does.
+Deletes the staged file for the triple if present, silently treating a missing file as success; I/O failures raise [`StagingException`](StagingException.md). It is the non-logging variant of `unstage`.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldId` | `String` | TODO: describe |
-| `owner` | `UUID` | TODO: describe |
-| `selection` | `String` | TODO: describe |
+| `worldId` | `String` | World identifier of the staged file. |
+| `owner` | `UUID` | Owner UUID of the staged file. |
+| `selection` | `String` | Selection name whose staged snapshot is deleted. |
 
 ### Returns
 `void`
@@ -286,13 +284,13 @@ public SnapshotStore store()
 ```
 
 ### Description
-TODO: Describe what `store` does.
+Returns the injected [`SnapshotStore`](SnapshotStore.md), allowing callers that already hold a `StagingService` to reuse the same serializer for other snapshot files.
 
 ### Parameters
 None.
 
 ### Returns
-[`SnapshotStore`](SnapshotStore.md) — TODO: describe return value.
+[`SnapshotStore`](SnapshotStore.md) — The store used for staged snapshots.
 
 ---
 

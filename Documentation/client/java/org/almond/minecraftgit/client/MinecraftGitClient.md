@@ -13,17 +13,17 @@
 
 ## Usage
 
-TODO: Add usage examples for `MinecraftGitClient`.
+Fabric constructs this class by name from `fabric.mod.json` and calls `onInitializeClient()` once during client startup; code elsewhere never instantiates it and instead calls `MinecraftGitClient.services()`. For example, `GitServices services = MinecraftGitClient.services();` is how a command or screen obtains the graph. After the client stops, the static reference is null and `services()` throws.
 
 Client entrypoint. All commands, world access and rendering are client-side;
-the mod is marked {@code "environment": "client"} and has no server
+the mod is marked `"environment": "client"` and has no server
 entrypoint.
 
 ---
 
 ## Fields
 
-- `services` ([`GitServices`](GitServices.md)) — TODO: describe field
+- `services` ([`GitServices`](GitServices.md)) — Static reference to the single live `GitServices`; set in `onInitializeClient()` and nulled after `close()` on `CLIENT_STOPPING`, so `services()` can detect use after shutdown.
 
 ---
 
@@ -36,7 +36,7 @@ public void onInitializeClient()
 ```
 
 ### Description
-TODO: Describe what `onInitializeClient` does.
+Loads `config.json` from `<config dir>/minecraftgit`, builds the `DebugLogger` and the `GitServices` graph, registers the `/git` command tree, the wand block callbacks and the selection renderer, and registers a `CLIENT_STOPPING` hook that closes the graph. It also probes for `org.eclipse.jgit.api.Git` and logs whether JGit is present, without aborting startup when it is missing.
 
 ### Parameters
 None.
@@ -54,13 +54,13 @@ public static GitServices services()
 ```
 
 ### Description
-TODO: Describe what `services` does.
+Returns the live service graph, throwing `IllegalStateException("Minecraft Git is not initialized.")` when called before initialization or after `CLIENT_STOPPING`.
 
 ### Parameters
 None.
 
 ### Returns
-[`GitServices`](GitServices.md) — TODO: describe return value.
+[`GitServices`](GitServices.md) — the single live service graph.
 
 ---
 

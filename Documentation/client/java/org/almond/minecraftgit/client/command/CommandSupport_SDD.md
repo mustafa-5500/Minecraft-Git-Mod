@@ -22,7 +22,7 @@
 
 ## Usage
 
-TODO: Describe how `CommandSupport` is instantiated and used.
+`CommandSupport` is never instantiated — its constructor is private and all helpers are static. Command classes such as `GitCommand`, `StagingCommands` and `CommitCommands` call it directly: `run`/`runInt` wrap synchronous handler bodies, `complete`/`completeFuture` move async results onto the client thread, and `unwrap`/`handleError` turn service failures into a single chat line.
 
 ---
 
@@ -55,17 +55,17 @@ import java.util.function.Supplier;
 
 | Import | Purpose |
 |--------|---------|
-| `FabricClientCommandSource` | TODO: describe purpose |
-| `Minecraft` | TODO: describe purpose |
-| [`MinecraftGit`](../../../../../../../main/java/org/almond/minecraftgit/MinecraftGit.md) | TODO: describe purpose |
-| [`GitServices`](../GitServices.md) | TODO: describe purpose |
-| [`UserFacingException`](../../../../../../../main/java/org/almond/minecraftgit/util/UserFacingException.md) | TODO: describe purpose |
-| `Locale` | TODO: describe purpose |
-| `CompletableFuture` | TODO: describe purpose |
-| `CompletionException` | TODO: describe purpose |
-| `ExecutionException` | TODO: describe purpose |
-| `Consumer` | TODO: describe purpose |
-| `Supplier` | TODO: describe purpose |
+| `FabricClientCommandSource` | command-source type read by the player checks and used to send feedback and errors |
+| `Minecraft` | obtains the client instance used for `execute` and for the `player`/`level` liveness check |
+| [`MinecraftGit`](../../../../../../../main/java/org/almond/minecraftgit/MinecraftGit.md) | provides the shared `LOGGER` for unexpected failures |
+| [`GitServices`](../GitServices.md) | supplies the IO executor via `async` and the command services used by callbacks |
+| [`UserFacingException`](../../../../../../../main/java/org/almond/minecraftgit/util/UserFacingException.md) | expected player-readable failure whose message is shown verbatim |
+| `Locale` | provides `Locale.ROOT` for locale-independent lowercasing |
+| `CompletableFuture` | result type accepted by `completeFuture` and produced by `GitServices.async` |
+| `CompletionException` | wrapper type stripped by `unwrap` around async stage failures |
+| `ExecutionException` | wrapper type stripped by `unwrap` when joining futures |
+| `Consumer` | success callback invoked on the client thread |
+| `Supplier` | blocking task supplied to `complete` |
 
 ---
 
@@ -75,6 +75,7 @@ import java.util.function.Supplier;
 public final class CommandSupport {
 ```
 
+- **`final` with a private constructor** — a non-instantiable static helper collection; there is no instance state, so every command class can call the same helpers without any lifecycle or ownership concerns.
 
 ---
 
@@ -84,7 +85,7 @@ public final class CommandSupport {
 private CommandSupport()
 ```
 
-TODO: Provide detailed design explanation for `CommandSupport`.
+Private constructor: the class is a static utility holder with no state, so there is no instance lifecycle to design around.
 
 ---
 
@@ -94,7 +95,7 @@ TODO: Provide detailed design explanation for `CommandSupport`.
 public static FabricClientCommandSource requirePlayer(FabricClientCommandSource source)
 ```
 
-TODO: Provide detailed design explanation for `requirePlayer`.
+Player-only guard. It inspects `source.getPlayer()`; when null (console, command block, or a source detached from a player) it throws `UserFacingException` with the fixed message, so handlers never dereference a missing player UUID. Otherwise it returns the same source, enabling the one-line chaining used by the command classes.
 
 ---
 
@@ -104,7 +105,7 @@ TODO: Provide detailed design explanation for `requirePlayer`.
 public static int run(FabricClientCommandSource source, Runnable action)
 ```
 
-TODO: Provide detailed design explanation for `run`.
+Synchronous wrapper around a `Runnable`. It returns `1` after a successful run and catches `Throwable` — not just `Exception` — so no failure escapes into Brigadier; the throwable is delegated to `handleError` and `0` marks failure for the dispatcher.
 
 ---
 
@@ -114,7 +115,7 @@ TODO: Provide detailed design explanation for `run`.
 public static int runInt(FabricClientCommandSource source, Supplier<Integer> action)
 ```
 
-TODO: Provide detailed design explanation for `runInt`.
+Synchronous wrapper for handlers whose real work is asynchronous and therefore only report a Brigadier status (typically `1` means scheduled). The supplier's integer is returned as-is; a thrown `Throwable` is reported by `handleError` and replaced with `0`.
 
 ---
 
@@ -125,7 +126,7 @@ public static <T> void complete(GitServices services, FabricClientCommandSource 
                                     Supplier<T> task, Consumer<T> success)
 ```
 
-Run a blocking task on the IO executor, then invoke {@code success} on the
+Run a blocking task on the IO executor, then invoke `success` on the
 client thread. If the player left the world while the task was running,
 the result is silently dropped.
 
@@ -148,7 +149,7 @@ Deliver an already-running future's result on the client thread.
 public static void handleError(FabricClientCommandSource source, Throwable error)
 ```
 
-TODO: Provide detailed design explanation for `handleError`.
+Central error policy shared by every command. It first calls `unwrap`; `UserFacingException` and `IllegalArgumentException` are treated as expected input problems, so only their message is sent to chat and nothing is logged. Any other throwable is logged at error level through `MinecraftGit.LOGGER`, then chat receives a generic `Git operation failed: ...` line naming the message (or simple class name) and pointing at the game log. This keeps stack traces out of chat while keeping them diagnosable.
 
 ---
 
@@ -158,7 +159,7 @@ TODO: Provide detailed design explanation for `handleError`.
 public static Throwable unwrap(Throwable error)
 ```
 
-TODO: Provide detailed design explanation for `unwrap`.
+Walks the cause chain while the current throwable is a `CompletionException` or `ExecutionException` and has a cause. `CompletableFuture.whenComplete` and `join` wrap service failures this way; unwrapping lets `handleError` classify them and lets callers report the real message. A throwable that is already unwrapped is returned unchanged.
 
 ---
 
@@ -168,7 +169,7 @@ TODO: Provide detailed design explanation for `unwrap`.
 public static String join(String[] args, int from)
 ```
 
-TODO: Provide detailed design explanation for `join`.
+Reconstructs a greedy argument tail: arguments from index `from` onward are concatenated with single spaces. Intended for handlers that receive an argument array plus a start index; returns the empty string for an out-of-range start.
 
 ---
 
@@ -178,6 +179,6 @@ TODO: Provide detailed design explanation for `join`.
 public static String lower(String value)
 ```
 
-TODO: Provide detailed design explanation for `lower`.
+Normalizes text for case-insensitive name comparisons. `null` maps to the empty string; otherwise `toLowerCase(Locale.ROOT)` is used so the result does not depend on the JVM default locale.
 
 ---

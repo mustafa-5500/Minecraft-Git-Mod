@@ -14,14 +14,18 @@
 
 ## Usage
 
-TODO: Describe how `RepoException` is instantiated and used.
+Raised inside `RepoService` (via its `error(...)` helper and direct validation), `RepoMetadataStore` and `RepoManager` checks; commands do not catch it explicitly — `CommandSupport.handleError` unwraps completion exceptions and prints any `UserFacingException` message in chat.
+
+```java
+throw new RepoException("Could not read repository metadata at " + file + ": " + e.getMessage(), e);
+```
 
 ---
 
 ## 1. Overview
 
 A repository operation failed in a way the user can act on. Commands show
-{@link #getMessage()} directly; the JGit cause is kept for debug logs.
+`.getMessage()` directly; the JGit cause is kept for debug logs.
 
 ---
 
@@ -37,7 +41,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 
 | Import | Purpose |
 |--------|---------|
-| [`UserFacingException`](../util/UserFacingException.md) | TODO: describe purpose |
+| [`UserFacingException`](../util/UserFacingException.md) | Parent type that marks the message as safe to show in chat; `CommandSupport` checks for it when deciding between a clean error and a logged crash. |
 
 ---
 
@@ -47,7 +51,7 @@ import org.almond.minecraftgit.util.UserFacingException;
 public class RepoException extends UserFacingException {
 ```
 
-- **`extends UserFacingException`** — TODO: explain inheritance.
+- **`extends UserFacingException`** — Inherits the unchecked `RuntimeException` nature, so repository methods need no `throws` clauses and lambdas passed to `CommandSupport.complete` can propagate failures; the distinction from a generic exception is entirely the user-facing message contract.
 
 ---
 
@@ -57,7 +61,7 @@ public class RepoException extends UserFacingException {
 public RepoException(String message)
 ```
 
-TODO: Provide detailed design explanation for `RepoException`.
+Delegates to `UserFacingException(message)`. Used when the failure is a known precondition (no repository, blank author, detached HEAD, empty metadata), so no stack trace is needed and the message alone tells the player what to do. The exception is not logged by the repository layer; the command layer decides.
 
 ---
 
@@ -67,6 +71,6 @@ TODO: Provide detailed design explanation for `RepoException`.
 public RepoException(String message, Throwable cause)
 ```
 
-TODO: Provide detailed design explanation for `RepoException`.
+Delegates to `UserFacingException(message, cause)`. Used when wrapping `IOException`/`GitAPIException`: the message names the file or action in plain language while `getCause()` keeps the original exception chain for `MinecraftGit.LOGGER`/`DebugLogger` diagnostics. Note that command output shows only `getMessage()`, so callers must not put the only useful detail in the cause.
 
 ---

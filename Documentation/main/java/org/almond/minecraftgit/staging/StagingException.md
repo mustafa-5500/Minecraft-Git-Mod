@@ -11,7 +11,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `StagingException`.
+Throw it from staging code when the player can correct the problem, for example `throw new StagingException("Selection '" + name + "' has no origin; add a cuboid first.");`. The command layer catches [`UserFacingException`](../util/UserFacingException.md) and prints the message in chat instead of a crash report.
 
 A staging operation failed in a way the user can fix.
 
@@ -25,12 +25,12 @@ public StagingException(String message)
 ```
 
 ### Description
-TODO: Describe what `StagingException` does.
+Creates an exception carrying a user-facing explanation of the staging failure.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | Message shown to the player; it should describe the cause and, where possible, the fix. |
 
 ### Returns
 `StagingException` instance.
@@ -45,13 +45,13 @@ public StagingException(String message, Throwable cause)
 ```
 
 ### Description
-TODO: Describe what `StagingException` does.
+Creates an exception with a user-facing explanation and the underlying cause for diagnostics.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
-| `cause` | `Throwable` | TODO: describe |
+| `message` | `String` | Message shown to the player. |
+| `cause` | `Throwable` | Underlying I/O or format failure, retained for logs rather than shown verbatim. |
 
 ### Returns
 `StagingException` instance.

@@ -16,20 +16,26 @@
 
 ## Usage
 
-TODO: Add usage examples for `RepoLocator`.
+`RepoManager` creates one instance from `config.reposRoot()` and `config.metaRoot()`; the rest of the codebase asks it for paths instead of building them by hand. Both methods are pure path arithmetic — no directories are created and no existence checks are made.
+
+```java
+RepoLocator locator = new RepoLocator(config.reposRoot(), config.metaRoot());
+Path repo = locator.repoPath(worldId);        // config/minecraftgit/repos/<world>
+Path meta = locator.metadataPath(worldId);    // config/minecraftgit/meta/<world>.json
+```
 
 Decides where repositories and their local-only metadata live.
-<p>Repositories live in the mod data folder
-({@code config/minecraftgit/repos/<world>}), not inside the world folder.
-World backups therefore never capture a hot {@code .git} directory, and a
-repository is not accidentally copied with the map.</p>
+Repositories live in the mod data folder
+(`config/minecraftgit/repos/<world>`), not inside the world folder.
+World backups therefore never capture a hot `.git` directory, and a
+repository is not accidentally copied with the map.
 
 ---
 
 ## Fields
 
-- `repoRoot` (`Path`) — TODO: describe field
-- `metadataRoot` (`Path`) — TODO: describe field
+- `repoRoot` (`Path`) — Absolute, normalized directory under which each world gets its own subdirectory containing the Git repository.
+- `metadataRoot` (`Path`) — Absolute, normalized directory holding the per-world `<world>.json` metadata files.
 
 ---
 
@@ -41,13 +47,13 @@ public RepoLocator(Path repoRoot, Path metadataRoot)
 ```
 
 ### Description
-TODO: Describe what `RepoLocator` does.
+Stores both roots after converting them with `toAbsolutePath().normalize()`, so every path derived later is absolute and free of `.`/`..` segments regardless of the process working directory.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `repoRoot` | `Path` | TODO: describe |
-| `metadataRoot` | `Path` | TODO: describe |
+| `repoRoot` | `Path` | Directory that holds one repository subdirectory per world (normally `config/minecraftgit/repos`). |
+| `metadataRoot` | `Path` | Directory that holds the per-world metadata JSON files (normally `config/minecraftgit/meta`). |
 
 ### Returns
 `RepoLocator` instance.
@@ -62,13 +68,13 @@ public Path repoRoot()
 ```
 
 ### Description
-TODO: Describe what `repoRoot` does.
+Returns the normalized repository root. `RepoManager` passes the derived paths to `RepoService`, and diagnostics may print the root to show where world data lives.
 
 ### Parameters
 None.
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — Absolute, normalized repository root directory.
 
 ---
 
@@ -80,13 +86,13 @@ public Path metadataRoot()
 ```
 
 ### Description
-TODO: Describe what `metadataRoot` does.
+Returns the normalized metadata root. `RepoManager` uses it to construct the `RepoMetadataStore`.
 
 ### Parameters
 None.
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — Absolute, normalized metadata root directory.
 
 ---
 
@@ -98,15 +104,15 @@ public Path repoPath(String worldName)
 ```
 
 ### Description
-TODO: Describe what `repoPath` does.
+Resolves `repoRoot/<Names.safeWorldName(worldName)>`. The sanitizer replaces characters outside `[A-Za-z0-9_.-]` with `_`, so a world id containing `__`, spaces, colons or slashes still maps to one directory level. The directory is not created here; `RepoService.init()` does that.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldName` | `String` | TODO: describe |
+| `worldName` | `String` | World key to map; `null` is sanitized to `world`. |
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — Absolute path of the world's repository directory, whether or not it exists.
 
 ---
 
@@ -118,15 +124,15 @@ public Path metadataPath(String worldName)
 ```
 
 ### Description
-TODO: Describe what `metadataPath` does.
+Resolves `metadataRoot/<Names.safeWorldName(worldName)>.json`, mirroring the naming rule used by `RepoMetadataStore.file` so the metadata file for a world is always the same path. No file is read or created.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `worldName` | `String` | TODO: describe |
+| `worldName` | `String` | World key to map to a metadata file. |
 
 ### Returns
-`Path` — TODO: describe return value.
+`Path` — Absolute path of the world's metadata JSON file, which may not exist.
 
 ---
 

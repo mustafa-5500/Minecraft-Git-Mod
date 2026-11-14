@@ -30,13 +30,15 @@
 
 ## Usage
 
-TODO: Describe how `RepoCommands` is instantiated and used.
+`GitCommand.register` calls `attach` once with the `/git` root and `attachConfig` once with the pre-built `config` literal; the class is never instantiated and mutates nothing at attach time. Every executing branch resolves the current world, optionally checks that the repository is initialized, runs the blocking JGit call through `CommandSupport.complete` on `GitServices.io()`, and formats the result back on the client thread with `Messages`.
 
 ---
 
 ## 1. Overview
 
 Repository lifecycle and transport commands.
+
+The class splits cleanly into command wiring (`attach`, `attachConfig`, `attachRemote`), asynchronous operations (`init`, `repo`, `setAuthor`, the remote commands, `log`, `push`, `fetch`) and formatting helpers (`showRepo`, `showLog`, `shortId`, `currentWorld`). Repository identity is always the `WorldContext.id()` key, and remote/branch defaults come from local `RepoMetadata` first and `ModConfig` second. Blocking JGit work never runs on the render thread: `CommandSupport.complete` submits it to the IO executor and marshals the result back through `Minecraft.execute`.
 
 ---
 
@@ -70,25 +72,25 @@ import java.util.List;
 
 | Import | Purpose |
 |--------|---------|
-| `IntegerArgumentType` | TODO: describe purpose |
-| `StringArgumentType` | TODO: describe purpose |
-| `LiteralArgumentBuilder` | TODO: describe purpose |
-| `ClientCommandManager` | TODO: describe purpose |
-| `FabricClientCommandSource` | TODO: describe purpose |
-| `ServerPlayer` | TODO: describe purpose |
-| [`GitServices`](../GitServices.md) | TODO: describe purpose |
-| [`WorldContext`](../WorldContext.md) | TODO: describe purpose |
-| [`CommitInfo`](../../../../../../../main/java/org/almond/minecraftgit/repo/CommitInfo.md) | TODO: describe purpose |
-| [`PullPlan`](../../../../../../../main/java/org/almond/minecraftgit/repo/PullPlan.md) | TODO: describe purpose |
-| [`RemoteInfo`](../../../../../../../main/java/org/almond/minecraftgit/repo/RemoteInfo.md) | TODO: describe purpose |
-| [`RepoInfo`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoInfo.md) | TODO: describe purpose |
-| [`RepoMetadata`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoMetadata.md) | TODO: describe purpose |
-| [`RepoProgress`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoProgress.md) | TODO: describe purpose |
-| [`RepoService`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoService.md) | TODO: describe purpose |
-| [`Names`](../../../../../../../main/java/org/almond/minecraftgit/util/Names.md) | TODO: describe purpose |
-| `ZoneId` | TODO: describe purpose |
-| `DateTimeFormatter` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
+| `IntegerArgumentType` | Declares the `count` argument of `log` with the 1–100 range. |
+| `StringArgumentType` | Declares `name`, `url`, `remote` and author arguments; `greedyString()` keeps the rest of the line intact for URLs. |
+| `LiteralArgumentBuilder` | Type of the `/git` root and `config` builders the subtrees are appended to. |
+| `ClientCommandManager` | Fabric factory for client-side literals and arguments. |
+| `FabricClientCommandSource` | Command source providing the client, the optional player and chat output. |
+| `ServerPlayer` | Declared by the generator's import block but not referenced; `init` derives the author name from the client `Player` instead. |
+| [`GitServices`](../GitServices.md) | Service locator supplying the repo manager, config defaults, async executor and messaging. |
+| [`WorldContext`](../WorldContext.md) | Resolves the `<world>__<dimension>` repository key for the current world. |
+| [`CommitInfo`](../../../../../../../main/java/org/almond/minecraftgit/repo/CommitInfo.md) | Row type returned by `RepoService.log` and formatted by `showLog`. |
+| [`PullPlan`](../../../../../../../main/java/org/almond/minecraftgit/repo/PullPlan.md) | Declared by the generator's import block but not referenced; pull/plan commands live in `PullCommands`. |
+| [`RemoteInfo`](../../../../../../../main/java/org/almond/minecraftgit/repo/RemoteInfo.md) | Name/URL pair listed by `remoteList` and suggested for `fetch <remote>`. |
+| [`RepoInfo`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoInfo.md) | Snapshot produced by `init`/`info` and rendered by `showRepo`. |
+| [`RepoMetadata`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoMetadata.md) | Local per-world state read by `push`/`fetch` to pick the configured remote name. |
+| [`RepoProgress`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoProgress.md) | `RepoProgress.NOOP` is passed to push/fetch so JGit progress callbacks do nothing while the command is async. |
+| [`RepoService`](../../../../../../../main/java/org/almond/minecraftgit/repo/RepoService.md) | Declared by the generator's import block but not named explicitly; repository calls go through `services.repos().service(worldId)`. |
+| [`Names`](../../../../../../../main/java/org/almond/minecraftgit/util/Names.md) | Declared by the generator's import block but not referenced here; name sanitising happens inside `WorldContext`. |
+| `ZoneId` | Supplies the system default time zone for the `DATE` formatter. |
+| `DateTimeFormatter` | Types the `DATE` field used to render commit timestamps. |
+| `List` | Types the commit list parameter of `showLog`. |
 
 ---
 
@@ -98,6 +100,7 @@ import java.util.List;
 public final class RepoCommands {
 ```
 
+`public final` with a private constructor marks a static-only command module. Its only state is the immutable `DATE` formatter; the `GitServices` instance is captured by the registered lambdas rather than stored in a field, so re-registering the command tree cannot retain a stale service set. Repository handles are never cached here — each command asks `RepoManager` for the current world's `RepoService`.
 
 ---
 
@@ -109,7 +112,7 @@ private static final DateTimeFormatter DATE;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `DATE` | `DateTimeFormatter` | TODO: describe |
+| `DATE` | `DateTimeFormatter` | Immutable `yyyy-MM-dd HH:mm` formatter bound to `ZoneId.systemDefault()`, used only by `showLog`. `DateTimeFormatter` is thread-safe, so the static instance is safe even though formatting happens on the client thread. |
 
 ---
 
@@ -119,7 +122,7 @@ private static final DateTimeFormatter DATE;
 private RepoCommands()
 ```
 
-TODO: Provide detailed design explanation for `RepoCommands`.
+Never invoked; the private constructor documents that the class is a static utility. All commands are registered through `attach`/`attachConfig`, and no instance fields or resources need initialization.
 
 ---
 
@@ -129,7 +132,18 @@ TODO: Provide detailed design explanation for `RepoCommands`.
 public static void attach(LiteralArgumentBuilder<FabricClientCommandSource> root, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `attach`.
+Registers the repository-facing command tree on the `/git` root:
+
+- `/git init` → `init`
+- `/git repo` → `repo`
+- `/git remote` and `/git remote list` → `remoteList`
+- `/git remote add <name> <url>` → `remoteAdd`
+- `/git remote remove <name>` → `remoteRemove`
+- `/git log [count]` → `log` (default 10, range 1..100)
+- `/git push [--force]` → `push`
+- `/git fetch [remote]` → `fetch`
+
+`log` exposes a bare executor and an integer argument whose range is enforced by Brigadier before the callback runs. `push` exposes a `--force` literal that only flips the boolean passed to `push`; it is not an argument, so it must follow the literal exactly. `fetch`'s remote argument has an inline suggestion provider that lists `services.repos().service(world.id()).remoteList()` only when `isInitialized(world.id())` is true, and catches `RuntimeException` so a broken repository or missing world cannot break command parsing. The tree is built without touching disk.
 
 ---
 
@@ -140,7 +154,7 @@ public static void attachConfig(LiteralArgumentBuilder<FabricClientCommandSource
                                     GitServices services)
 ```
 
-Adds the author subcommand to the config literal built by {@link GitCommand}.
+Called by `GitCommand.register` before the root is registered, because the `/git config` literal is created there and needs its `author <name> <email>` child before `config` is attached to `/git`. The name and email are both `StringArgumentType.string()` arguments and are passed verbatim to `setAuthor`, which owns validation. Keeping the author command in this class means every repository-metadata mutation lives beside the rest of the repo commands, while `/git config show|debug|blocks` stays in `GitCommand`.
 
 ---
 
@@ -151,7 +165,7 @@ private static void attachRemote(LiteralArgumentBuilder<FabricClientCommandSourc
                                      GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `attachRemote`.
+Builds the `remote` literal with four paths: bare `remote` and `remote list` both execute `remoteList`; `remote add` requires a `name` and a `greedyString` `url`, so a URL may contain spaces and consumes the remainder of the line without quoting; `remote remove` requires just the name. It is factored out of `attach` only to keep that method readable — it captures the same `services`.
 
 ---
 
@@ -161,7 +175,7 @@ TODO: Provide detailed design explanation for `attachRemote`.
 private static int init(FabricClientCommandSource source, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `init`.
+Resolves the world, chooses the initial author name (`source.getPlayer().getName()` when a player is present, otherwise `config.committerName`), sends an "Initializing repository for ..." line and submits `services.repos().init(world.id(), playerName, null)` to the IO executor. `RepoManager.init` adopts the player's name if the metadata still has the default identity, derives `<sanitized>@minecraftgit.local` when no email is given, opens/creates the JGit repository and persists the effective branch and identity. The success consumer prints the repo path and the branch with either `<shortId> (<summary>)` or `empty` HEAD, and adds a multiplayer warning that applying builds requires single-player. The executor callback returns 1 immediately, because the work is asynchronous.
 
 ---
 
@@ -171,7 +185,7 @@ TODO: Provide detailed design explanation for `init`.
 private static int repo(FabricClientCommandSource source, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `repo`.
+Guard-then-delegate: if `services.repos().isInitialized(world.id())` is false it prints the "Run /git init" hint and returns without scheduling work; otherwise it submits `service(world.id()).info()` and passes the snapshot to `showRepo` on the client thread. `RepoInfo` is a pure record, so nothing is retained between commands.
 
 ---
 
@@ -182,7 +196,7 @@ private static void showRepo(FabricClientCommandSource source, GitServices servi
                                  WorldContext world, RepoInfo info)
 ```
 
-TODO: Provide detailed design explanation for `showRepo`.
+Formatting-only helper for `/git repo`: prints the world id header and the path, branch, HEAD (short id plus summary, or `(no commits)`), author with email, remote (`(none)` or `name -> url`) and working-tree state from the snapshot. `shortId` is applied to the full HEAD id so chat lines stay narrow.
 
 ---
 
@@ -192,7 +206,7 @@ TODO: Provide detailed design explanation for `showRepo`.
 private static int setAuthor(FabricClientCommandSource source, GitServices services, String name, String email)
 ```
 
-TODO: Provide detailed design explanation for `setAuthor`.
+Validates both arguments before scheduling anything: either blank value throws `UserFacingException("Author name and email must not be blank.")`, which `runInt` turns into a chat error. It then submits `services.repos().setAuthor(world.id(), name, email)`, which rewrites the local `RepoMetadata` and, when a `RepoService` is already open for the world, re-applies the JGit author identity so the next commit uses it. The result consumer reports the identity and the world id.
 
 ---
 
@@ -203,7 +217,7 @@ private static int remoteAdd(FabricClientCommandSource source, GitServices servi
                                  String name, String url)
 ```
 
-TODO: Provide detailed design explanation for `remoteAdd`.
+Trims the greedy URL string and submits `service(world.id()).remoteAdd(name, target)` to the IO executor. `RepoService` validates the remote name and URI and writes the JGit config; failures (invalid URL, reserved name) propagate through `CommandSupport` and appear as chat errors. Success echoes the trimmed `name -> target` pair.
 
 ---
 
@@ -213,7 +227,7 @@ TODO: Provide detailed design explanation for `remoteAdd`.
 private static int remoteRemove(FabricClientCommandSource source, GitServices services, String name)
 ```
 
-TODO: Provide detailed design explanation for `remoteRemove`.
+Submits `service(world.id()).remoteRemove(name)` and confirms with "Removed remote '<name>'." when it returns. Matching is delegated entirely to JGit/`RepoService`; an unknown remote raises a `RepoException` that becomes a chat error.
 
 ---
 
@@ -223,7 +237,7 @@ TODO: Provide detailed design explanation for `remoteRemove`.
 private static int remoteList(FabricClientCommandSource source, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `remoteList`.
+Submits `service(world.id()).remoteList()` and consumes the `List<RemoteInfo>` on the client thread. An empty list prints the actionable hint `/git remote add origin <url>`; otherwise each remote becomes a raw `name -> url` line (no header), so the output is easy to copy.
 
 ---
 
@@ -233,7 +247,7 @@ TODO: Provide detailed design explanation for `remoteList`.
 private static int log(FabricClientCommandSource source, GitServices services, int count)
 ```
 
-TODO: Provide detailed design explanation for `log`.
+Requires an initialized repository (otherwise the `/git init` hint), then submits `service(world.id()).log(count)` and hands the commits to `showLog`. The default of 10 is passed by the bare executor in `attach`; the integer argument is constrained to 1–100 by Brigadier, so `count` is never zero or negative. `RepoService.log` walks HEAD from newest to oldest, so the printed order is newest first.
 
 ---
 
@@ -243,7 +257,7 @@ TODO: Provide detailed design explanation for `log`.
 private static void showLog(FabricClientCommandSource source, GitServices services, List<CommitInfo> commits)
 ```
 
-TODO: Provide detailed design explanation for `showLog`.
+Prints "No commits yet." for an empty list, otherwise a "Recent commits:" header followed by one line per commit as `shortId`, the `DATE`-formatted timestamp, author and the first line of the commit message (`CommitInfo.message` is already abbreviated by `RepoService.log`). The formatter converts each `CommitInfo.when()` `Instant` into the system time zone; no date/time is parsed back.
 
 ---
 
@@ -253,7 +267,7 @@ TODO: Provide detailed design explanation for `showLog`.
 private static int push(FabricClientCommandSource source, GitServices services, boolean force)
 ```
 
-TODO: Provide detailed design explanation for `push`.
+Requires an initialized repository, then derives the remote from metadata: `metadata(world.id()).remoteName()` when non-blank, otherwise `config.defaultRemote`. It announces "Pushing to <remote>..." and submits `service(world.id()).push(remote, force, RepoProgress.NOOP)`; the NOOP progress monitor means no per-object UI updates are attempted while the command runs off-thread. The consumer distinguishes `summary.upToDate()` ("Remote is already up to date.") from a real push, reporting branch, remote and `updatedRefs()`. `RepoService` rejects a detached HEAD, a repository without commits and non-fast-forward ref updates; those errors are caught by `CommandSupport` and shown in chat (the rejection message suggests fetching/pulling or `--force`).
 
 ---
 
@@ -263,7 +277,7 @@ TODO: Provide detailed design explanation for `push`.
 private static int fetch(FabricClientCommandSource source, GitServices services, String requestedRemote)
 ```
 
-TODO: Provide detailed design explanation for `fetch`.
+Requires an initialized repository and resolves the remote with a strict precedence: a non-blank `requestedRemote` argument wins; otherwise the metadata remote name; otherwise `config.defaultRemote`. That metadata-derived fallback is what lets a bare `/git fetch` track the remote configured for this world instead of always using the global default. It announces the chosen remote, submits `fetch(remote, RepoProgress.NOOP)` and reports `summary.remote()` plus the number of updated refs. The same remote names are offered by the argument suggestion provider in `attach`, but only for an initialized repository, so suggestions fail soft before `/git init`.
 
 ---
 
@@ -273,7 +287,7 @@ TODO: Provide detailed design explanation for `fetch`.
 private static WorldContext currentWorld(FabricClientCommandSource source)
 ```
 
-TODO: Provide detailed design explanation for `currentWorld`.
+Shared adapter over `WorldContext.current(source.getClient())`. It runs synchronously before any async submission, so a missing world produces the standard `UserFacingException` ("Open a world before using /git.") and no background task is created. All repository commands key their state by the returned `id()`.
 
 ---
 
@@ -283,6 +297,6 @@ TODO: Provide detailed design explanation for `currentWorld`.
 private static String shortId(String id)
 ```
 
-TODO: Provide detailed design explanation for `shortId`.
+Small display helper used for HEAD ids in `init` and `showRepo`: it returns `null` unchanged, leaves strings shorter than 8 characters untouched (so an unborn or truncated HEAD cannot overflow) and otherwise returns the first 8 characters. It makes no assumption that the input is a valid Git hash, which keeps the formatter safe for hand-edited or future metadata.
 
 ---

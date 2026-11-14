@@ -11,7 +11,7 @@
 
 ## Usage
 
-TODO: Add usage examples for `UserFacingException`.
+Extend it, or throw it directly, for failures whose message is meaningful to the player; `CommandSupport.handleError` prints `getMessage()` for any `UserFacingException`, prints `IllegalArgumentException` messages too, and logs a stack trace only for unexpected types. For example, throwing `new UserFacingException(message)` produces a red chat error without a log entry.
 
 Base type for failures that are safe and useful to show in chat.
 
@@ -25,12 +25,12 @@ public UserFacingException(String message)
 ```
 
 ### Description
-TODO: Describe what `UserFacingException` does.
+Creates a user-facing failure with a chat-ready message and no underlying cause.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
+| `message` | `String` | Text shown verbatim to the player. |
 
 ### Returns
 `UserFacingException` instance.
@@ -45,13 +45,13 @@ public UserFacingException(String message, Throwable cause)
 ```
 
 ### Description
-TODO: Describe what `UserFacingException` does.
+Creates a user-facing failure that keeps an underlying cause for diagnostics while still showing only the message in chat.
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `String` | TODO: describe |
-| `cause` | `Throwable` | TODO: describe |
+| `message` | `String` | Text shown verbatim to the player. |
+| `cause` | `Throwable` | Underlying failure retained for logs and debugging. |
 
 ### Returns
 `UserFacingException` instance.

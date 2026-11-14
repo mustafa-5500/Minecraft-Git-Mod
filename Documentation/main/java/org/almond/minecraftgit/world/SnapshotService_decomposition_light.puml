@@ -1,0 +1,192 @@
+@startuml
+
+'
+' Light theme
+'
+
+'
+' Colors
+'
+!$color_bg = "#FFFFFF"
+!$color_fg = "#000000"
+!$color_arrow = "#6b7280"
+
+!$color_primary = "#333333"
+!$color_sydd_bg = "#f0f7ff"
+!$color_sydd_border = "#a9baccff"
+!$color_sydd_main_border = "#2b6cb0"
+
+!$color_srs_bg = "#fffbea"
+!$color_srs_border = "#b7791f"
+
+!$color_component_bg = "#e2e8f0"
+!$color_component_border = "#4a5568"
+!$color_external_component_bg = "#8eb2c0"
+!$color_external_component_border = "#355360"
+
+skinparam {
+  BackgroundColor $color_bg
+
+  DefaultFontName "Segoe UI"
+  DefaultFontColor $color_fg
+
+  ArrowColor $color_arrow
+  ArrowFontSize 10
+  ArrowFontStyle bold
+
+  RectangleBackgroundColor $color_bg
+  RectangleBorderColor $color_primary
+  RectangleBorderThickness 2
+
+  ComponentBackgroundColor $color_sydd_bg
+  ComponentBorderColor $color_sydd_main_border
+  ComponentBorderThickness 2
+
+  ComponentStereotypeFontColor $color_fg
+  Shadowing false
+}
+
+skinparam rectangle<<ZC>> {
+  BackgroundColor $color_bg
+  BorderColor $color_primary
+  BorderThickness 2
+}
+
+skinparam rectangle<<SyDD>> {
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+skinparam rectangle<<SyDDMain>> {
+  FontStyle plain
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_main_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRS>> {
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRSMain>> {
+  FontStyle plain
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam component<<External>> {
+  BackgroundColor $color_external_component_bg
+  BorderColor $color_external_component_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #dbeafe
+  BorderColor #2b6cb0
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #eff6ff
+  BorderColor #5b7fb6
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #f8fbff
+  BorderColor #6b8bbd
+  BorderThickness 1
+}
+
+hide stereotype
+left to right direction
+title Function Call Decomposition: main/java/org/almond/minecraftgit/world/SnapshotService.java
+skinparam packageStyle rectangle
+
+rectangle "SnapshotService.java" <<FileLevel>> as file_SnapshotService {
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_SnapshotService {
+    component "SnapshotService.java::<b>SnapshotService()</b>" <<FunctionLevel>> as m_1
+    component "SnapshotService.java::<b>capture()</b>" <<FunctionLevel>> as m_2
+    component "SnapshotService.java::<b>captureEntities()</b>" <<FunctionLevel>> as m_3
+    component "SnapshotService.java::<b>capturePositions()</b>" <<FunctionLevel>> as m_4
+    component "SnapshotService.java::<b>chunkKey()</b>" <<FunctionLevel>> as m_5
+    component "SnapshotService.java::<b>ensureLoaded()</b>" <<FunctionLevel>> as m_6
+    component "SnapshotService.java::<b>warn()</b>" <<FunctionLevel>> as m_7
+  }
+}
+
+cloud "CaptureResult()" as ext_19
+cloud "EntitySnapshot()" as ext_21
+cloud "SelectionException()" as ext_2
+cloud "Snapshot()" as ext_15
+cloud "add()" as ext_8
+cloud "at()" as ext_13
+cloud "blockCount()" as ext_17
+cloud "blockRead()" as ext_10
+cloud "cuboidCount()" as ext_4
+cloud "cuboids()" as ext_7
+cloud "encode()" as ext_9
+cloud "entityCount()" as ext_18
+cloud "hasOrigin()" as ext_1
+cloud "intersects()" as ext_20
+cloud "isEmpty()" as ext_14
+cloud "log()" as ext_16
+cloud "name()" as ext_3
+cloud "of()" as ext_23
+cloud "origin()" as ext_6
+cloud "payloadBytes()" as ext_12
+cloud "toString()" as ext_22
+cloud "volume()" as ext_5
+cloud "world()" as ext_11
+
+m_2 --> ext_1
+m_2 --> ext_2
+m_2 --> ext_3
+m_2 --> ext_4
+m_2 --> ext_5
+m_2 --> ext_6
+m_2 --> ext_7
+m_2 <--> m_6
+m_2 --> ext_8
+m_2 <--> m_5
+m_2 --> ext_9
+m_2 --> ext_10
+m_2 --> ext_11
+m_2 --> ext_12
+m_2 --> m_7
+m_2 --> ext_13
+m_2 <--> m_3
+m_2 --> ext_14
+m_2 --> ext_15
+m_2 --> ext_16
+m_2 --> ext_17
+m_2 --> ext_18
+m_2 --> ext_19
+m_3 --> ext_7
+m_3 --> ext_8
+m_3 --> ext_20
+m_3 --> ext_9
+m_3 --> ext_12
+m_3 --> m_7
+m_3 --> ext_21
+m_3 --> ext_22
+m_3 --> ext_16
+m_4 <--> m_6
+m_4 --> ext_9
+m_4 --> ext_12
+m_4 --> ext_10
+m_4 --> ext_13
+m_4 --> ext_15
+m_4 --> ext_23
+m_6 <--> m_5
+m_6 --> ext_8
+m_7 --> ext_8
+@enduml

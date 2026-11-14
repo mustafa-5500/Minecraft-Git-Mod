@@ -1,0 +1,58 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam sequence {
+  ArrowColor #475569
+  LifeLineBorderColor #94A3B8
+  ParticipantBackgroundColor #E8F1FB
+  ParticipantBorderColor #2B6CB0
+  ActorBackgroundColor #FFFFFF
+  ActorBorderColor #333333
+}
+hide footbox
+
+title L4 - /git checkout <commit> [name]
+
+actor Player as P
+participant "PullCommands" as PC
+participant "SelectionService" as SEL
+participant "RepoService" as RS
+participant "PullService" as PS
+participant "QuadrantCsvReader" as RD
+participant "ApplyPlan" as AP
+participant "ApplyService" as AS
+participant "Integrated server" as SRV
+
+P -> PC : /git checkout <commit> [name]
+PC -> PC : require single-player + repo
+PC -> SEL : get(worldId, owner, name)
+SEL --> PC : Selection (must have origin)
+PC -> RS : resolve(revision)  [IO]
+RS --> PC : Optional<ObjectId>
+PC -> PS : prepareCheckout(selection, repo, commit)  [IO]
+PS -> RS : exportSelectionAt(commit, selection, tempDir)
+RS --> PS : found
+PS -> RD : readSelection(tempDir, name, metaOrigin)
+RD --> PS : target Snapshot
+PS -> RD : readSelection(localRepoDir, name, localOrigin)
+RD --> PS : local HEAD Snapshot
+PS --> PC : PreparedCheckout(target, meta, localHead,\nlocalHeadOrigin, tempDir)
+
+PC -> AP : between(selection, localHead,\nselection.origin(), target,\nselection.origin(), true)
+AP --> PC : ApplyPlan at the LOCAL origin
+PC -> AS : apply(world, plan)
+AS -> SRV : server.execute(begin) -> tick-batched writes
+SRV --> AS : ApplyResult
+AS --> PC : ApplyResult
+PC --> P : "Applied: ..."
+PC -> PS : cleanup(tempDir) (async)
+
+note over PC,PS
+  HEAD/branch are NOT moved and the
+  repository worktree is not rewritten.
+  Only a temporary export is read, then
+  the world is written through the
+  integrated server.
+end note
+
+@enduml

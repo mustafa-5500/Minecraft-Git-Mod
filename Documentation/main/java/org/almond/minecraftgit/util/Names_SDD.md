@@ -19,7 +19,7 @@
 
 ## Usage
 
-TODO: Describe how `Names` is instantiated and used.
+Used statically wherever a selection name becomes a path or a world id becomes a directory name; call sites include `SelectionService.requireName`, `SelectionMetadataStore.file` and `StagingService`.
 
 ---
 
@@ -44,8 +44,8 @@ import java.util.regex.Pattern;
 
 | Import | Purpose |
 |--------|---------|
-| `Locale` | TODO: describe purpose |
-| `Pattern` | TODO: describe purpose |
+| `Locale` | `Locale.ROOT` makes `lower()` deterministic across player locales. |
+| `Pattern` | Compiles the validation and sanitization regexes once as static fields. |
 
 ---
 
@@ -67,8 +67,8 @@ private static final Pattern WORLD;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `SELECTION` | `Pattern` | TODO: describe |
-| `WORLD` | `Pattern` | TODO: describe |
+| `SELECTION` | `Pattern` | Allow-list pattern for user-typed selection names. |
+| `WORLD` | `Pattern` | Deny-list pattern of characters replaced when generating safe world names. |
 
 ---
 
@@ -78,7 +78,7 @@ private static final Pattern WORLD;
 private Names()
 ```
 
-TODO: Provide detailed design explanation for `Names`.
+Private to make the utility non-instantiable; the class has no state and every method is static.
 
 ---
 
@@ -88,7 +88,7 @@ TODO: Provide detailed design explanation for `Names`.
 public static boolean isValidSelectionName(String name)
 ```
 
-TODO: Provide detailed design explanation for `isValidSelectionName`.
+Single `matcher.matches()` check with an explicit null guard; the full-match pattern enforces length, first character and allowed alphabet in one pass.
 
 ---
 
@@ -98,7 +98,7 @@ TODO: Provide detailed design explanation for `isValidSelectionName`.
 public static String requireSelectionName(String name)
 ```
 
-TODO: Provide detailed design explanation for `requireSelectionName`.
+Returns the name when `isValidSelectionName` passes, otherwise throws `IllegalArgumentException` with the canonical rule message. Returning the value lets callers use it as a normalizing expression, and validation always happens before a path is built.
 
 ---
 
@@ -108,7 +108,7 @@ TODO: Provide detailed design explanation for `requireSelectionName`.
 public static String safeWorldName(String world)
 ```
 
-TODO: Provide detailed design explanation for `safeWorldName`.
+Runs the `WORLD` pattern replacement of each unsafe character with `_` and substitutes the `world` sentinel for null; this keeps arbitrary ids from escaping the data directory or producing invalid file names.
 
 ---
 
@@ -118,7 +118,7 @@ TODO: Provide detailed design explanation for `safeWorldName`.
 public static String lower(String value)
 ```
 
-TODO: Provide detailed design explanation for `lower`.
+Wraps null as an empty string and calls `toLowerCase(Locale.ROOT)`, avoiding default-locale casing surprises such as the Turkish dotless i.
 
 ---
 
@@ -128,6 +128,6 @@ TODO: Provide detailed design explanation for `lower`.
 public static String shorten(String value, int max)
 ```
 
-TODO: Provide detailed design explanation for `shorten`.
+Null-safe length check: values within `max` are returned as-is, while longer ones are cut at `max` and suffixed with `...`. No Unicode-aware truncation is attempted.
 
 ---

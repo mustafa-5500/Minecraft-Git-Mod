@@ -1,0 +1,186 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #F8FAFC
+  BorderColor #64748B
+  ArrowColor #475569
+}
+hide empty members
+hide stereotype
+
+title L3 - Data Model: model and handoff records
+
+class "BlockPos" as BlockPos <<record>> {
+  +int x
+  +int y
+  +int z
+  +ORIGIN
+  +add() / subtract()
+}
+
+class "Cuboid" as Cuboid <<record>> {
+  +int minX..maxX
+  +int minY..maxY
+  +int minZ..maxZ
+  +SMALLEST_CORNER_ORDER
+  +volume()
+  +contains()
+}
+
+class "Selection" as Selection {
+  +String name
+  +UUID owner
+  +String ownerName
+  +String world
+  +BlockPos origin
+  +List<Cuboid> cuboids
+  +boolean tracked
+  +addCuboid() / removeCuboidAt()
+  +reorigin()
+  +relative() / absolute()
+}
+
+class "BlockSnapshot" as BlockSnapshot <<record>> {
+  +int x, y, z
+  +int rx, ry, rz
+  +String blockData
+  +String blockEntity
+}
+
+class "EntitySnapshot" as EntitySnapshot <<record>> {
+  +double x, y, z
+  +double rx, ry, rz
+  +float yaw, pitch
+  +String type
+  +String data
+}
+
+class "Snapshot" as Snapshot {
+  +String selection
+  +BlockPos origin
+  +List<BlockSnapshot> blocks
+  +List<EntitySnapshot> entities
+  +Instant capturedAt
+  +rebase() / retain()
+  +byRelative() / byAbsolute()
+}
+
+class "BuildDiff" as BuildDiff {
+  +List<BlockSnapshot> added
+  +List<BlockSnapshot> changed
+  +List<BlockSnapshot> removed
+  +List<EntitySnapshot> entitiesAdded
+  +List<EntitySnapshot> entitiesRemoved
+  +int unchanged
+  +between()
+}
+
+class "CaptureResult" as CaptureResult <<record>> {
+  +Snapshot snapshot
+  +int skippedChunks
+  +long skippedBlocks
+  +int skippedEntities
+  +List<String> warnings
+}
+
+class "StagedSelection" as StagedSelection <<record>> {
+  +Snapshot snapshot
+  +Path file
+  +Instant stagedAt
+}
+
+class "CommitRequest" as CommitRequest <<record>> {
+  +String playerName / playerUuid
+  +String worldName / gameMode
+  +List<Selection> selections
+  +String message
+  +boolean allowEmpty
+}
+
+class "CommitMeta" as CommitMeta <<record>> {
+  +String selection / world
+  +String authorName / authorUuid
+  +BlockPos origin / previousOrigin
+  +boolean reorigined
+  +List<Cuboid> relativeCuboids
+  +counts / timestamps
+}
+
+class "CommitResult" as CommitResult <<record>> {
+  +String commitId / shortId
+  +List<String> selections
+  +long added / changed / removed
+  +long entityChanges
+  +String message
+}
+
+class "PullPlan" as PullPlan <<record>> {
+  +String remote / branch
+  +ObjectId localHead / remoteHead / mergeBase
+  +Type type
+  +int fetchedRefs
+}
+
+class "ApplyPlan" as ApplyPlan <<record>> {
+  +String selectionName
+  +UUID owner
+  +BlockPos targetOrigin / oldEntityOrigin
+  +Map<BlockPos, BlockSnapshot> placements
+  +Set<BlockPos> removals
+  +List<EntitySnapshot> entityRemovals
+  +List<EntityPlacement> entityPlacements
+  +boolean createBackup
+  +between() / restore()
+}
+
+class "ApplyResult" as ApplyResult <<record>> {
+  +int placed / removed / skipped
+  +int entitiesPlaced / entitiesRemoved
+  +Path backup
+  +List<String> warnings
+}
+
+class "RepoMetadata" as RepoMetadata {
+  +String world / branch
+  +String remoteName / remoteUrl
+  +String authorName / authorEmail
+  +String lastSelection
+}
+
+Selection "1" *-- "0..*" Cuboid : cuboids
+Selection --> BlockPos : origin
+Snapshot "1" *-- "0..*" BlockSnapshot : blocks
+Snapshot "1" *-- "0..*" EntitySnapshot : entities
+Snapshot --> BlockPos : origin
+BlockSnapshot --> BlockPos : absolute + relative
+EntitySnapshot --> BlockPos : relativeBlock()
+BuildDiff --> Snapshot : before / after
+CaptureResult --> Snapshot : captures
+StagedSelection --> Snapshot : stages
+CommitRequest --> Selection : staged selections
+CommitMeta --> BlockPos : origin
+CommitMeta --> Cuboid : relativeCuboids
+CommitResult ..> CommitRequest : produced from
+PullPlan ..> ObjectId : commits
+ApplyPlan --> BlockSnapshot : placements
+ApplyPlan --> EntitySnapshot : entity changes
+ApplyPlan --> Selection : selection/origin
+ApplyResult ..> ApplyPlan : produced from
+RepoMetadata --> Selection : lastSelection name
+
+note right of Snapshot
+  Blocks and entities carry BOTH
+  absolute (x,y,z) and relative
+  (rx,ry,rz) coordinates.
+  Relative = absolute - origin.
+end note
+
+note bottom of ApplyPlan
+  Relative coordinates are canonical.
+  placements  = targetOrigin + relative
+  removals    = oldOrigin    + relative
+end note
+
+@enduml

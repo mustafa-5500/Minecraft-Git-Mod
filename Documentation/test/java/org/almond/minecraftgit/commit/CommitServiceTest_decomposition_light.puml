@@ -1,0 +1,235 @@
+@startuml
+
+'
+' Light theme
+'
+
+'
+' Colors
+'
+!$color_bg = "#FFFFFF"
+!$color_fg = "#000000"
+!$color_arrow = "#6b7280"
+
+!$color_primary = "#333333"
+!$color_sydd_bg = "#f0f7ff"
+!$color_sydd_border = "#a9baccff"
+!$color_sydd_main_border = "#2b6cb0"
+
+!$color_srs_bg = "#fffbea"
+!$color_srs_border = "#b7791f"
+
+!$color_component_bg = "#e2e8f0"
+!$color_component_border = "#4a5568"
+!$color_external_component_bg = "#8eb2c0"
+!$color_external_component_border = "#355360"
+
+skinparam {
+  BackgroundColor $color_bg
+
+  DefaultFontName "Segoe UI"
+  DefaultFontColor $color_fg
+
+  ArrowColor $color_arrow
+  ArrowFontSize 10
+  ArrowFontStyle bold
+
+  RectangleBackgroundColor $color_bg
+  RectangleBorderColor $color_primary
+  RectangleBorderThickness 2
+
+  ComponentBackgroundColor $color_sydd_bg
+  ComponentBorderColor $color_sydd_main_border
+  ComponentBorderThickness 2
+
+  ComponentStereotypeFontColor $color_fg
+  Shadowing false
+}
+
+skinparam rectangle<<ZC>> {
+  BackgroundColor $color_bg
+  BorderColor $color_primary
+  BorderThickness 2
+}
+
+skinparam rectangle<<SyDD>> {
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+skinparam rectangle<<SyDDMain>> {
+  FontStyle plain
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_main_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRS>> {
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRSMain>> {
+  FontStyle plain
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam component<<External>> {
+  BackgroundColor $color_external_component_bg
+  BorderColor $color_external_component_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #dbeafe
+  BorderColor #2b6cb0
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #eff6ff
+  BorderColor #5b7fb6
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #f8fbff
+  BorderColor #6b8bbd
+  BorderThickness 1
+}
+
+hide stereotype
+left to right direction
+title Function Call Decomposition: test/java/org/almond/minecraftgit/commit/CommitServiceTest.java
+skinparam packageStyle rectangle
+
+rectangle "CommitServiceTest.java" <<FileLevel>> as file_CommitServiceTest {
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_CommitServiceTest {
+    component "CommitServiceTest.java::<b>commitsStagedSelectionAndWritesFormatterTree()</b>" <<FunctionLevel>> as m_1
+    component "CommitServiceTest.java::<b>emptyCommitIsAllowedExplicitly()</b>" <<FunctionLevel>> as m_2
+    component "CommitServiceTest.java::<b>request()</b>" <<FunctionLevel>> as m_3
+    component "CommitServiceTest.java::<b>secondCommitReportsChanges()</b>" <<FunctionLevel>> as m_4
+    component "CommitServiceTest.java::<b>setUp()</b>" <<FunctionLevel>> as m_5
+    component "CommitServiceTest.java::<b>snapshot()</b>" <<FunctionLevel>> as m_6
+    component "CommitServiceTest.java::<b>stagedButMissingSnapshotIsReported()</b>" <<FunctionLevel>> as m_7
+    component "CommitServiceTest.java::<b>tearDown()</b>" <<FunctionLevel>> as m_8
+    component "CommitServiceTest.java::<b>unchangedStagingIsRejectedWithoutDeletingIt()</b>" <<FunctionLevel>> as m_9
+  }
+}
+
+cloud "CommitRequest()" as ext_19
+cloud "CommitService()" as ext_29
+cloud "Cuboid()" as ext_33
+cloud "DebugLogger()" as ext_24
+cloud "RepoManager()" as ext_26
+cloud "Selection()" as ext_31
+cloud "Snapshot()" as ext_34
+cloud "StagingService()" as ext_27
+cloud "addCuboid()" as ext_32
+cloud "added()" as ext_5
+cloud "at()" as ext_36
+cloud "changed()" as ext_6
+cloud "close()" as ext_39
+cloud "commit()" as ext_2
+cloud "contains()" as ext_38
+cloud "cuboidCount()" as ext_18
+cloud "get()" as ext_12
+cloud "hasStaged()" as ext_9
+cloud "init()" as ext_30
+cloud "isEmpty()" as ext_21
+cloud "load()" as ext_23
+cloud "log()" as ext_11
+cloud "logsRoot()" as ext_25
+cloud "message()" as ext_13
+cloud "name()" as ext_35
+cloud "of()" as ext_3
+cloud "origin()" as ext_15
+cloud "read()" as ext_14
+cloud "removed()" as ext_22
+cloud "repoPath()" as ext_7
+cloud "resolve()" as ext_8
+cloud "selection()" as ext_16
+cloud "selections()" as ext_4
+cloud "service()" as ext_10
+cloud "setTracked()" as ext_37
+cloud "stage()" as ext_1
+cloud "stagingRoot()" as ext_28
+cloud "toString()" as ext_20
+cloud "world()" as ext_17
+
+m_1 --> ext_1
+m_1 <--> m_6
+m_1 --> ext_2
+m_1 <--> m_3
+m_1 --> ext_3
+m_1 --> ext_4
+m_1 --> ext_5
+m_1 --> ext_6
+m_1 --> ext_7
+m_1 --> ext_8
+m_1 --> ext_9
+m_1 --> ext_10
+m_1 --> ext_11
+m_1 --> ext_12
+m_1 --> ext_13
+m_1 --> ext_14
+m_1 --> ext_15
+m_1 --> ext_16
+m_1 --> ext_17
+m_1 --> ext_18
+m_2 --> ext_19
+m_2 --> ext_20
+m_2 --> ext_3
+m_2 --> ext_2
+m_2 --> ext_4
+m_2 --> ext_21
+m_2 --> ext_10
+m_2 --> ext_11
+m_2 --> ext_12
+m_2 --> ext_13
+m_3 --> ext_19
+m_3 --> ext_20
+m_3 --> ext_3
+m_4 --> ext_1
+m_4 <--> m_6
+m_4 --> ext_2
+m_4 <--> m_3
+m_4 --> ext_5
+m_4 --> ext_6
+m_4 --> ext_22
+m_5 --> ext_23
+m_5 --> ext_8
+m_5 --> ext_24
+m_5 --> ext_25
+m_5 --> ext_26
+m_5 --> ext_27
+m_5 --> ext_28
+m_5 --> ext_29
+m_5 --> ext_30
+m_5 --> ext_31
+m_5 --> ext_32
+m_5 --> ext_33
+m_6 --> ext_34
+m_6 --> ext_35
+m_6 --> ext_3
+m_6 --> ext_36
+m_7 --> ext_37
+m_7 --> ext_2
+m_7 <--> m_3
+m_7 --> ext_38
+m_8 --> ext_39
+m_9 --> ext_1
+m_9 <--> m_6
+m_9 --> ext_2
+m_9 <--> m_3
+m_9 --> ext_38
+m_9 --> ext_9
+@enduml

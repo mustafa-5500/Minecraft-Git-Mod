@@ -65,14 +65,25 @@
 
 ## Usage
 
-TODO: Describe how `RepoService` is instantiated and used.
+`RepoManager` creates one `RepoService` per world id and closes it when worlds reload, so commands never construct it directly; the example below mirrors what `/git pull` does on the async executor.
+
+```java
+RepoService repo = repos.service(world.id());
+PullPlan plan = repo.planPull("origin", RepoProgress.NOOP);
+if (plan.canFastForward()) {
+    for (String name : repo.listSelectionsAt(plan.remoteHead())) {
+        repo.exportSelectionAt(plan.remoteHead(), name, stagingDir.resolve(name));
+    }
+    repo.fastForward(plan);   // only after the world apply succeeded
+}
+```
 
 ---
 
 ## 1. Overview
 
 Facade over JGit for one repository. All public methods are serialized by a
-lock because a JGit {@link Repository} is not safe for concurrent mutation.
+lock because a JGit `Repository` is not safe for concurrent mutation.
 The world is never touched here; repository I/O is pure file/network work.
 
 ---
@@ -131,49 +142,49 @@ import java.util.stream.Stream;
 
 | Import | Purpose |
 |--------|---------|
-| [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe purpose |
-| [`Names`](../util/Names.md) | TODO: describe purpose |
-| `Git` | TODO: describe purpose |
-| `ResetCommand` | TODO: describe purpose |
-| `Status` | TODO: describe purpose |
-| `GitAPIException` | TODO: describe purpose |
-| `NoHeadException` | TODO: describe purpose |
-| `TransportException` | TODO: describe purpose |
-| `Constants` | TODO: describe purpose |
-| `FileMode` | TODO: describe purpose |
-| `ObjectId` | TODO: describe purpose |
-| `ObjectLoader` | TODO: describe purpose |
-| `PersonIdent` | TODO: describe purpose |
-| `Ref` | TODO: describe purpose |
-| `Repository` | TODO: describe purpose |
-| `StoredConfig` | TODO: describe purpose |
-| `RevCommit` | TODO: describe purpose |
-| `RevWalk` | TODO: describe purpose |
-| `RevFilter` | TODO: describe purpose |
-| `FetchResult` | TODO: describe purpose |
-| `PushResult` | TODO: describe purpose |
-| `RefSpec` | TODO: describe purpose |
-| `RemoteConfig` | TODO: describe purpose |
-| `RemoteRefUpdate` | TODO: describe purpose |
-| `URIish` | TODO: describe purpose |
-| `TreeWalk` | TODO: describe purpose |
-| `File` | TODO: describe purpose |
-| `IOException` | TODO: describe purpose |
-| `URISyntaxException` | TODO: describe purpose |
-| `StandardCharsets` | TODO: describe purpose |
-| `Files` | TODO: describe purpose |
-| `Path` | TODO: describe purpose |
-| `ArrayList` | TODO: describe purpose |
-| `Collection` | TODO: describe purpose |
-| `Comparator` | TODO: describe purpose |
-| `LinkedHashSet` | TODO: describe purpose |
-| `List` | TODO: describe purpose |
-| `Locale` | TODO: describe purpose |
-| `Map` | TODO: describe purpose |
-| `Optional` | TODO: describe purpose |
-| `Set` | TODO: describe purpose |
-| `ReentrantLock` | TODO: describe purpose |
-| `Stream` | TODO: describe purpose |
+| [`DebugLogger`](../debug/DebugLogger.md) | Records open/init/commit/fetch/push outcomes and full failure causes under the `repo` category. |
+| [`Names`](../util/Names.md) | Validates selection directory names when listing a commit tree and when exporting one selection. |
+| `Git` | Main JGit façade: init/open/add/commit/status/log/fetch/push/reset and remote management. |
+| `ResetCommand` | Supplies `ResetType.HARD`, used by `fastForward` to move `HEAD` and the worktree onto the remote commit. |
+| `Status` | Return type of `git.status()`, used for no-op checks and the `RepoInfo.clean` flag. |
+| `GitAPIException` | Common supertype of JGit command failures, caught and translated into `RepoException`. |
+| `NoHeadException` | Thrown by `git.log()` on an unborn branch, where an empty history is returned instead. |
+| `TransportException` | Marks network/authentication failures so `friendlyMessage` can produce an actionable hint. |
+| `Constants` | Supplies `HEAD` and `DOT_GIT` instead of hard-coded literals. |
+| `FileMode` | Filters tree entries to regular and executable files during export. |
+| `ObjectId` | Commit and ref hashes used in method signatures and tree lookups. |
+| `ObjectLoader` | Loads blob bytes from the object database when exporting a snapshot. |
+| `PersonIdent` | Carries the author/committer identity and timestamp of a new commit. |
+| `Ref` | Imported for JGit ref-typed helpers; the current code reads branch state through `Repository.resolve` and `Repository.getBranch` instead. |
+| `Repository` | Underlying object, config and ref access behind the `Git` façade. |
+| `StoredConfig` | Reads and writes the `user.*`, `remote.*` and `branch.*` sections of `.git/config`. |
+| `RevCommit` | Parsed commit providing message, author, tree and ancestry links. |
+| `RevWalk` | Parses commits, tests ancestry and computes the merge base. |
+| `RevFilter` | `MERGE_BASE` filter used to classify local versus remote histories. |
+| `FetchResult` | Fetch outcome: tracking-ref updates and server messages. |
+| `PushResult` | Per-ref push statuses inspected to count updates and collect rejections. |
+| `RefSpec` | Explicit fetch and push refspecs, so behaviour does not depend on stored config. |
+| `RemoteConfig` | Configured remote entries and their URIs for `remoteList`. |
+| `RemoteRefUpdate` | Individual remote ref status (`OK`, `UP_TO_DATE`, rejected) and its message. |
+| `URIish` | Parsed remote location accepted by `git.remoteAdd`. |
+| `TreeWalk` | Recursive tree traversal for selection listing, export and the pristine-init check. |
+| `File` | Converts local path strings to `file:` URIs in `toUri`. |
+| `IOException` | NIO/config failure type, caught and translated by `error`. |
+| `URISyntaxException` | Invalid URL reported when constructing `URIish` in `remoteAdd`. |
+| `StandardCharsets` | UTF-8 encoding for the bootstrap README and `.gitattributes`. |
+| `Files` | Directory creation, existence checks, file reads/writes and deletion. |
+| `Path` | Repository and target paths; `normalize` and `startsWith` underpin containment checks. |
+| `ArrayList` | Mutable accumulators for log rows, remotes and push rejection messages. |
+| `Collection` | Batch input for the directories removed by `commitWorkspace`. |
+| `Comparator` | `reverseOrder()` for child-before-parent deletion. |
+| `LinkedHashSet` | Order-preserving, duplicate-free selection names. |
+| `List` | Return/parameter type for commit and remote collections and refspec lists. |
+| `Locale` | `Locale.ROOT` lower-casing in `friendlyMessage`. |
+| `Map` | File map for `commitWorkspace` and config value groups. |
+| `Optional` | Absent results (`HEAD`, revision lookups) without exceptions. |
+| `Set` | Result type of `listSelectionsAt`. |
+| `ReentrantLock` | Serializes all JGit access; reentrant so public methods may call nested locked helpers. |
+| `Stream` | `Files.walk` stream for recursive deletion. |
 
 ---
 
@@ -183,7 +194,7 @@ import java.util.stream.Stream;
 public final class RepoService implements AutoCloseable {
 ```
 
-- **`implements AutoCloseable`** — TODO: explain interfaces.
+- **`implements AutoCloseable`** — Enables try-with-resources-based closing of the JGit handles; `close()` is idempotent and reopens lazily, and the class stays `final` because it holds mutable handles plus a lock and is not designed for extension.
 
 ---
 
@@ -202,14 +213,14 @@ private String authorEmail;
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `repoPath` | `Path` | TODO: describe |
-| `options` | [`RepoOptions`](RepoOptions.md) | TODO: describe |
-| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | TODO: describe |
-| `lock` | `ReentrantLock` | TODO: describe |
-| `git` | `Git` | TODO: describe |
-| `repository` | `Repository` | TODO: describe |
-| `authorName` | `String` | TODO: describe |
-| `authorEmail` | `String` | TODO: describe |
+| `repoPath` | `Path` | Absolute, normalized worktree root; the anchor for every containment test. |
+| `options` | [`RepoOptions`](RepoOptions.md) | Immutable defaults (branch, default remote, fallback identity) captured once at construction. |
+| `debug` | [`DebugLogger`](../debug/DebugLogger.md) | Diagnostic sink for open/init/commit/sync events and full failure causes; nothing logged here reaches the user directly. |
+| `lock` | `ReentrantLock` | Single reentrant mutex around every JGit access; `*Locked` helpers assume it is held. |
+| `git` | `Git` | JGit façade, opened lazily and closed explicitly; `null` while the repository is closed. |
+| `repository` | `Repository` | Repository handle paired with `git`, used for config, ref and tree reads. |
+| `authorName` | `String` | In-memory commit identity name, kept in sync with `user.name`. |
+| `authorEmail` | `String` | In-memory commit identity email, kept in sync with `user.email`. |
 
 ---
 
@@ -219,7 +230,7 @@ private String authorEmail;
 public RepoService(Path repoPath, RepoOptions options, DebugLogger debug)
 ```
 
-TODO: Provide detailed design explanation for `RepoService`.
+Normalizes the path with `toAbsolutePath().normalize()` before anything else, so later `startsWith(repoPath)` checks cannot be fooled by `..` segments. It captures the `RepoOptions` defaults and seeds the author fields, then returns without touching the filesystem or JGit — `init()` and `open()` remain the only places where the repository appears.
 
 ---
 
@@ -229,7 +240,7 @@ TODO: Provide detailed design explanation for `RepoService`.
 public Path path()
 ```
 
-TODO: Provide detailed design explanation for `path`.
+Pure accessor for the normalized root; since it performs no existence check, callers pair it with `isInitialized()` to distinguish a configured path from a created repository.
 
 ---
 
@@ -239,7 +250,7 @@ TODO: Provide detailed design explanation for `path`.
 public boolean isInitialized()
 ```
 
-TODO: Provide detailed design explanation for `isInitialized`.
+Uses only `Files.isDirectory(<root>/.git)`, so it stays lock-free and never opens JGit; a bare repository or an unrelated directory reads as uninitialized. `RepoManager.isInitialized(worldId)` mirrors this check for services that have not been created yet.
 
 ---
 
@@ -249,8 +260,7 @@ TODO: Provide detailed design explanation for `isInitialized`.
 public RepoInfo init()
 ```
 
-Create the repository if needed (with a README and format documentation
-commit), otherwise open it.
+On a fresh directory it creates the worktree, runs `Git.init` on `options.branch()`, saves the identity, writes the bootstrap files, stages everything and commits them, so a new world immediately has a valid `HEAD`; the bootstrap subject is exactly the prefix `isPristineInitLocked` later recognises. On an existing repository it only opens and returns `infoLocked()`, which makes the method idempotent for `/git init`.
 
 ---
 
@@ -260,7 +270,7 @@ commit), otherwise open it.
 public void open()
 ```
 
-Open the repository if it is not already open.
+Locked one-liner over `ensureOpenLocked`, used when a caller only needs the handles open (for example after metadata or identity changes) without reading repository state.
 
 ---
 
@@ -270,7 +280,7 @@ Open the repository if it is not already open.
 private void ensureOpenLocked()
 ```
 
-TODO: Provide detailed design explanation for `ensureOpenLocked`.
+Lazy-open guard used by every public method: it short-circuits when both handles exist, otherwise checks `isInitialized()` and opens via `Git.open`, re-applies the author identity and logs. It is the single place that produces the "No Git repository exists … Run /git init first." message, and it assumes the lock is already held.
 
 ---
 
@@ -280,7 +290,7 @@ TODO: Provide detailed design explanation for `ensureOpenLocked`.
 private void writeBootstrapFiles()
 ```
 
-TODO: Provide detailed design explanation for `writeBootstrapFiles`.
+Creates the bootstrap files with `Files.writeString(..., UTF_8)` only when each file is absent, so a fresh directory gets deterministic content and an existing README is never overwritten. The `.gitattributes` LF rules keep CSV and JSON snapshots stable across platforms.
 
 ---
 
@@ -290,7 +300,7 @@ TODO: Provide detailed design explanation for `writeBootstrapFiles`.
 public RepoInfo info()
 ```
 
-TODO: Provide detailed design explanation for `info`.
+Locking wrapper that guarantees an open repository and then delegates to `infoLocked()`; it backs `/git repo` and is safe to call while other repository operations are running.
 
 ---
 
@@ -300,7 +310,7 @@ TODO: Provide detailed design explanation for `info`.
 private RepoInfo infoLocked()
 ```
 
-TODO: Provide detailed design explanation for `infoLocked`.
+Resolves `HEAD` once and reuses it for the id, the parsed short message and the `hasCommits` flag, then reads the branch remote from `StoredConfig`, falling back to `options.defaultRemote()` and an empty URL. The final field is a live `statusLocked()` clean check, which is why `info()` can be comparatively expensive on large selections.
 
 ---
 
@@ -310,7 +320,7 @@ TODO: Provide detailed design explanation for `infoLocked`.
 public String currentBranch()
 ```
 
-Current branch name, or an empty string for a detached HEAD.
+Locked public wrapper; the name is used as the push and pull ref component, and an empty result tells `push` and `planPull` to refuse with a detached-`HEAD` message.
 
 ---
 
@@ -320,7 +330,7 @@ Current branch name, or an empty string for a detached HEAD.
 private String currentBranchLocked()
 ```
 
-TODO: Provide detailed design explanation for `currentBranchLocked`.
+Reads `repository.getBranch()` and converts JGit's detached-`HEAD` answer (a 40-hex commit id) back to an empty string, which callers treat as "no branch to push or pull". It requires the lock and translates `IOException` into `RepoException`.
 
 ---
 
@@ -330,7 +340,7 @@ TODO: Provide detailed design explanation for `currentBranchLocked`.
 public Optional<String> headId()
 ```
 
-TODO: Provide detailed design explanation for `headId`.
+Resolves `Constants.HEAD` directly rather than walking history; it is the cheap "do we have a commit?" probe used before operations that need a HEAD, and it returns empty for an unborn branch.
 
 ---
 
@@ -340,7 +350,7 @@ TODO: Provide detailed design explanation for `headId`.
 public String commitAll(String message, boolean allowEmpty)
 ```
 
-Stage the whole working tree and commit it.
+Stages with `stageAllLocked()`, asks JGit for a status and returns `null` when the tree is clean unless `allowEmpty` is set, then commits with the configured identity and `setAllowEmpty`, returning the full id. Everything happens under one lock, so no other call can stage between the status check and the commit.
 
 ---
 
@@ -350,7 +360,7 @@ Stage the whole working tree and commit it.
 public String commitEmpty(String message)
 ```
 
-Create an empty commit, useful for verifying a configured remote.
+Delegates to `commitAll(message, true)`; JGit's `setAllowEmpty(true)` produces a commit that changes no trees, which is enough to exercise remote authentication and push permissions without touching snapshot data.
 
 ---
 
@@ -361,9 +371,7 @@ public String commitWorkspace(Map<String, byte[]> files, Collection<String> dire
                                   String message, boolean allowEmpty)
 ```
 
-Replace whole selection directories and commit the result atomically from
-the caller's perspective. Paths are relative to the repository root and
-are rejected if they escape it.
+Under one lock it removes each `directoriesToReplace` entry, writes the supplied file bytes, stages everything and commits, so other repository operations never observe a half-written workspace. Path validation happens per entry through `safeResolve`, but the filesystem writes themselves are not transactional: a crash mid-write leaves the worktree dirty, while the index and commit advance only on success.
 
 ---
 
@@ -373,7 +381,7 @@ are rejected if they escape it.
 private Path safeResolve(String relative)
 ```
 
-TODO: Provide detailed design explanation for `safeResolve`.
+Resolves the candidate against the root, normalizes it to collapse `.` and `..`, then rejects anything that is not a strict descendant of the root — the equality check stops a caller from deleting the repository itself. This is a lexical check only: symlinks inside the repository are not resolved.
 
 ---
 
@@ -383,7 +391,7 @@ TODO: Provide detailed design explanation for `safeResolve`.
 private static void deleteRecursively(Path path)
 ```
 
-TODO: Provide detailed design explanation for `deleteRecursively`.
+Walks the path with `Files.walk`, sorts entries in reverse order so children precede parents, and deletes each with `deleteIfExists`; a missing path returns early. It serves both replaced selection directories and the export target.
 
 ---
 
@@ -393,7 +401,7 @@ TODO: Provide detailed design explanation for `deleteRecursively`.
 private void stageAllLocked()
 ```
 
-TODO: Provide detailed design explanation for `stageAllLocked`.
+Two `git.add()` passes are required: the plain `addFilepattern(".")` never registers removals, so a second `setUpdate(true)` pass stages the deletions left by `commitWorkspace`'s directory replacement. Failures are rethrown through `error("stage files", ...)`.
 
 ---
 
@@ -403,7 +411,7 @@ TODO: Provide detailed design explanation for `stageAllLocked`.
 private Status statusLocked()
 ```
 
-TODO: Provide detailed design explanation for `statusLocked`.
+Thin `git.status().call()` wrapper that keeps the lock and checked-exception discipline explicit: it declares `GitAPIException` so the calling method decides whether a failure is fatal (as in `info`) or a no-op signal (as in `commitAll`).
 
 ---
 
@@ -413,7 +421,7 @@ TODO: Provide detailed design explanation for `statusLocked`.
 public Optional<CommitInfo> headCommit()
 ```
 
-TODO: Provide detailed design explanation for `headCommit`.
+Expressed as `log(1).stream().findFirst()` so it reuses the same mapping and empty-history handling as the log command instead of duplicating JGit calls.
 
 ---
 
@@ -423,7 +431,7 @@ TODO: Provide detailed design explanation for `headCommit`.
 public List<CommitInfo> log(int limit)
 ```
 
-TODO: Provide detailed design explanation for `log`.
+Guards the unborn-branch case before calling JGit (both an unresolved `HEAD` and `NoHeadException` return an empty list), clamps the limit to at least 1, and maps each `RevCommit` to a `CommitInfo`: full and 8-character ids, author falling back to committer, `Instant.EPOCH` when no identity exists and the subject from `firstLine`. Walk order is newest first, matching `/git log`.
 
 ---
 
@@ -433,7 +441,7 @@ TODO: Provide detailed design explanation for `log`.
 public void setAuthor(String name, String email)
 ```
 
-TODO: Provide detailed design explanation for `setAuthor`.
+Validates both fields before mutating anything, so a rejected update leaves the previous identity intact. The config write is skipped when no repository exists yet and is re-applied on the next open or init; this is the hook used by `/git config author` and by `RepoManager.init` when adopting the player's name.
 
 ---
 
@@ -443,7 +451,7 @@ TODO: Provide detailed design explanation for `setAuthor`.
 public String authorName()
 ```
 
-TODO: Provide detailed design explanation for `authorName`.
+Plain read of the in-memory field, deliberately lock-free because `setAuthor` replaces it atomically; the authoritative copy still lives in `.git/config`.
 
 ---
 
@@ -453,7 +461,7 @@ TODO: Provide detailed design explanation for `authorName`.
 public String authorEmail()
 ```
 
-TODO: Provide detailed design explanation for `authorEmail`.
+Plain read of the in-memory field, written together with the name by `configureAuthorLocked`.
 
 ---
 
@@ -463,7 +471,7 @@ TODO: Provide detailed design explanation for `authorEmail`.
 private void configureAuthorLocked()
 ```
 
-TODO: Provide detailed design explanation for `configureAuthorLocked`.
+Sets `user.name` and `user.email` on the cached `StoredConfig` and calls `save()`, so plain Git tooling sees the same identity as the mod. Invoked from `ensureOpenLocked`, from `init` before the bootstrap commit and from `setAuthor`; it requires the lock and an open repository.
 
 ---
 
@@ -473,7 +481,7 @@ TODO: Provide detailed design explanation for `configureAuthorLocked`.
 private PersonIdent identityLocked()
 ```
 
-TODO: Provide detailed design explanation for `identityLocked`.
+Creates a new `PersonIdent` per commit instead of caching one, so the committer timestamp reflects the moment of the commit while the name and email always come from the validated fields.
 
 ---
 
@@ -483,7 +491,7 @@ TODO: Provide detailed design explanation for `identityLocked`.
 public void remoteAdd(String name, String url)
 ```
 
-TODO: Provide detailed design explanation for `remoteAdd`.
+Validates the name, rejects a blank URL, converts local paths with `toUri`, then adds the remote through JGit and repairs a missing fetch refspec (`+refs/heads/*:refs/remotes/<name>/*`) in the stored config. Without that refspec later fetches would not update the tracking branch that `planPull` resolves.
 
 ---
 
@@ -493,7 +501,7 @@ TODO: Provide detailed design explanation for `remoteAdd`.
 public void remoteRemove(String name)
 ```
 
-TODO: Provide detailed design explanation for `remoteRemove`.
+Checks the name grammar and lets JGit drop the remote section; remote-tracking refs already fetched under `refs/remotes/<name>` are not pruned, they simply stop being updated.
 
 ---
 
@@ -503,7 +511,7 @@ TODO: Provide detailed design explanation for `remoteRemove`.
 public List<RemoteInfo> remoteList()
 ```
 
-TODO: Provide detailed design explanation for `remoteList`.
+Maps every `RemoteConfig` to a `RemoteInfo`, taking the first URI and tolerating remotes with none. Ordering follows the config file, which keeps `/git remote` output stable.
 
 ---
 
@@ -513,7 +521,7 @@ TODO: Provide detailed design explanation for `remoteList`.
 public Optional<RemoteInfo> remote(String name)
 ```
 
-TODO: Provide detailed design explanation for `remote`.
+Client-side filter over `remoteList()`; using the list call means the lookup inherits locking and error translation and there is no second config reader.
 
 ---
 
@@ -523,7 +531,7 @@ TODO: Provide detailed design explanation for `remote`.
 public FetchSummary fetch(String remote)
 ```
 
-TODO: Provide detailed design explanation for `fetch`.
+Default overload that supplies `RepoProgress.NOOP`, keeping call sites that do not display progress short.
 
 ---
 
@@ -533,7 +541,7 @@ TODO: Provide detailed design explanation for `fetch`.
 public FetchSummary fetch(String remote, RepoProgress progress)
 ```
 
-TODO: Provide detailed design explanation for `fetch`.
+Locked fetch that converts `FetchResult` into a `FetchSummary` (remote name, number of tracking-ref updates, server messages). Only `refs/remotes/<remote>` changes; the worktree and local branches stay as they are.
 
 ---
 
@@ -543,7 +551,7 @@ TODO: Provide detailed design explanation for `fetch`.
 private FetchResult fetchLocked(String remote, RepoProgress progress)
 ```
 
-TODO: Provide detailed design explanation for `fetchLocked`.
+Performs the actual fetch after validating the name and confirming a URL exists, using an explicit refspec rather than stored config, `setRemoveDeletedRefs(true)` to drop deleted remote branches and `JGitProgressMonitor.of(progress)` so `NOOP` becomes JGit's null monitor. It throws `GitAPIException` for the caller to translate.
 
 ---
 
@@ -553,7 +561,7 @@ TODO: Provide detailed design explanation for `fetchLocked`.
 public PushSummary push(String remote, boolean force)
 ```
 
-TODO: Provide detailed design explanation for `push`.
+Default overload supplying `RepoProgress.NOOP`.
 
 ---
 
@@ -563,7 +571,7 @@ TODO: Provide detailed design explanation for `push`.
 public PushSummary push(String remote, boolean force, RepoProgress progress)
 ```
 
-TODO: Provide detailed design explanation for `push`.
+Validates remote, branch and HEAD before touching the network (a detached `HEAD` and an unborn branch each get a targeted message), pushes the current branch to the same name with the `force` flag, then walks every `RemoteRefUpdate` to count `OK`s, note `UP_TO_DATE` and collect rejection messages into one actionable `RepoException`. On success it writes `branch.<branch>.remote` and `merge`, establishing the upstream used by later pulls.
 
 ---
 
@@ -573,9 +581,7 @@ TODO: Provide detailed design explanation for `push`.
 public PullPlan planPull(String remote, RepoProgress progress)
 ```
 
-Fetch and classify the relationship between the local branch and its
-remote. The caller applies the remote snapshot to the world before calling
-{@link #fastForward(PullPlan)}, so a failed world write does not move Git.
+The fetch runs inside the same lock as the classification, so the tracking ref it compares cannot move underneath it; classification order is detached `HEAD`, missing remote branch, no local commit (fast-forward from nothing), equal heads, local ancestor of remote, remote ancestor of local, pristine bootstrap commit and finally `DIVERGED`, with the merge base from a `MERGE_BASE` `RevWalk` that may be `null` for unrelated histories. Nothing is written — no ref, index or worktree change — so the caller can apply the world snapshot first and only then call `fastForward`, which is why a failed world write never leaves Git ahead of the world.
 
 ---
 
@@ -585,7 +591,7 @@ remote. The caller applies the remote snapshot to the world before calling
 public boolean fastForward(PullPlan plan)
 ```
 
-Move the local branch to the plan's remote head after a successful apply.
+Returns `false` without side effects for `UP_TO_DATE` and `DIVERGED` plans, re-checks that the checked-out branch is still the one that was planned, then performs `git.reset().setMode(HARD).setRef(plan.remoteHead())` to move `HEAD` and the worktree. Because it is a hard reset it discards local worktree changes, which is safe only because the plan was classified as a fast-forward and the caller has already exported the snapshot.
 
 ---
 
@@ -595,7 +601,7 @@ Move the local branch to the plan's remote head after a successful apply.
 private boolean isPristineInitLocked(RevCommit commit)
 ```
 
-TODO: Provide detailed design explanation for `isPristineInitLocked`.
+Detects the scaffold commit created by `init()`: the message prefix `Initialize MinecraftGit repository` plus a recursive tree containing only `README.md` and `.gitattributes`. `planPull` uses it to treat a freshly initialized world's unrelated history as an unborn branch, so a build can be pulled without a diverged-history error.
 
 ---
 
@@ -605,7 +611,7 @@ TODO: Provide detailed design explanation for `isPristineInitLocked`.
 public Optional<ObjectId> headObject()
 ```
 
-TODO: Provide detailed design explanation for `headObject`.
+Locked wrapper around `repository.resolve(HEAD)` returning the raw `ObjectId`; status, pull and checkout need the object rather than the hex string to walk trees.
 
 ---
 
@@ -615,7 +621,7 @@ TODO: Provide detailed design explanation for `headObject`.
 public Optional<ObjectId> resolve(String revision)
 ```
 
-TODO: Provide detailed design explanation for `resolve`.
+Generic revision resolution used for checkout targets and diagnostics; a `null` result from JGit becomes `Optional.empty()`, while `IOException` is translated by `error`.
 
 ---
 
@@ -625,7 +631,7 @@ TODO: Provide detailed design explanation for `resolve`.
 public Set<String> listSelectionsAt(ObjectId commitId)
 ```
 
-Selection names that exist in a commit's tree.
+Locked entry point that delegates to the tree walk; `PullService` uses it to discover which selections a remote commit contains before preparing an apply.
 
 ---
 
@@ -635,7 +641,7 @@ Selection names that exist in a commit's tree.
 private Set<String> listSelectionsAtLocked(ObjectId commitId)
 ```
 
-TODO: Provide detailed design explanation for `listSelectionsAtLocked`.
+Recursive `TreeWalk` over the commit tree: for each entry it takes the substring before the first `/`, filters it through `Names.isValidSelectionName` and accumulates into a `LinkedHashSet`. That filter is what excludes repository-level files such as `README.md` and `.gitattributes` from the selection list.
 
 ---
 
@@ -645,8 +651,7 @@ TODO: Provide detailed design explanation for `listSelectionsAtLocked`.
 public boolean exportSelectionAt(ObjectId commitId, String selection, Path target)
 ```
 
-Write one selection's files from a commit into {@code target}. Used by pull
-and checkout to apply a snapshot without disturbing the repository worktree.
+The selection name is re-validated with `Names.requireSelectionName` (an `IllegalArgumentException` becomes a `RepoException`), the target directory is deleted and recreated, and only `REGULAR_FILE`/`EXECUTABLE_FILE` entries under `<selection>/` are written. Each output path is normalized and checked to stay inside the target, so a crafted tree cannot write outside it; the method returns `false` when the commit has no files for that selection, which callers treat as an empty selection. The repository worktree and index are untouched, which is exactly what lets pull apply the world before `fastForward`.
 
 ---
 
@@ -656,7 +661,7 @@ and checkout to apply a snapshot without disturbing the repository worktree.
 private void requireRemoteLocked(String name)
 ```
 
-TODO: Provide detailed design explanation for `requireRemoteLocked`.
+Reads `remote.<name>.url` and fails with a message naming the exact `/git remote add` command to run; it turns a configuration mistake into user guidance instead of a transport error.
 
 ---
 
@@ -666,7 +671,7 @@ TODO: Provide detailed design explanation for `requireRemoteLocked`.
 private static void requireValidRemoteName(String name)
 ```
 
-TODO: Provide detailed design explanation for `requireValidRemoteName`.
+Static grammar check (`[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`) applied before any config or refspec construction, so an invalid name can never become a config subsection or ref path component.
 
 ---
 
@@ -676,7 +681,7 @@ TODO: Provide detailed design explanation for `requireValidRemoteName`.
 private static URIish toUri(String url)
 ```
 
-TODO: Provide detailed design explanation for `toUri`.
+Detects local filesystem forms (drive letter with separator, UNC path, absolute `/`, `./`, `../`) and converts them through `File.toURI()`; otherwise the string is parsed as a URL. This works around JGit treating a drive-letter path as a URI with a one-letter scheme.
 
 ---
 
@@ -686,7 +691,7 @@ TODO: Provide detailed design explanation for `toUri`.
 private RepoException error(String action, Exception cause)
 ```
 
-TODO: Provide detailed design explanation for `error`.
+Builds the user-facing message `Could not <action>: <friendly reason>`, logs the complete cause through `DebugLogger` and returns the `RepoException` that the caller throws. The cause is preserved, so the game log keeps the JGit detail while chat shows one actionable line.
 
 ---
 
@@ -696,7 +701,7 @@ TODO: Provide detailed design explanation for `error`.
 private static String friendlyMessage(Exception cause)
 ```
 
-TODO: Provide detailed design explanation for `friendlyMessage`.
+Normalises transport failures into three cases — credentials, unreachable host and missing repository — by inspecting `TransportException` or the word "transport" plus keywords such as `not authorized`, `unknown host` or `not found`. Non-transport failures fall back to the raw message, or the exception's simple class name when the message is blank.
 
 ---
 
@@ -706,7 +711,7 @@ TODO: Provide detailed design explanation for `friendlyMessage`.
 private static String firstLine(String message)
 ```
 
-TODO: Provide detailed design explanation for `firstLine`.
+Null-safe subject extraction used for debug lines and `CommitInfo.message`, so a multi-line commit message never breaks one-line log output.
 
 ---
 
@@ -717,7 +722,7 @@ TODO: Provide detailed design explanation for `firstLine`.
 public void close()
 ```
 
-TODO: Provide detailed design explanation for `close`.
+Closes the `Git` handle (which closes its `Repository`), logs the event and clears both fields under the lock; it is idempotent and leaves the service reusable because the next call reopens through `ensureOpenLocked`. `RepoManager` calls it on reload and at shutdown.
 
 ---
 
@@ -727,7 +732,7 @@ TODO: Provide detailed design explanation for `close`.
 public record PushSummary(String remote, String branch, int updatedRefs, boolean upToDate)
 ```
 
-TODO: Provide detailed design explanation for `PushSummary`.
+Record returned by both `push` overloads; commands read `updatedRefs()` and `upToDate()` to choose between "pushed N refs" and "already up to date" messaging. `upToDate` is computed as `upToDate || updated == 0`, so an empty update list also counts as up to date.
 
 ---
 
@@ -737,6 +742,6 @@ TODO: Provide detailed design explanation for `PushSummary`.
 public record FetchSummary(String remote, int updatedRefs, String messages)
 ```
 
-TODO: Provide detailed design explanation for `FetchSummary`.
+Record returned by both `fetch` overloads; `updatedRefs()` counts tracking-ref changes (zero when already current) and `messages` carries JGit's transport text for display. It is a plain immutable data carrier with no validation.
 
 ---

@@ -19,13 +19,13 @@
 
 ## Usage
 
-TODO: Describe how `GitCommand` is instantiated and used.
+`GitCommand` is a static registration class, called once by the client entrypoint when Fabric's client command callback fires; no instance is retained. `register(dispatcher, services)` builds the root literal and config subtree, then delegates to each feature class's `attach(...)` so command ownership stays with the class that implements it.
 
 ---
 
 ## 1. Overview
 
-Root {@code /git} command. Phases add subcommands here; the root and help
+Root `/git` command. Phases add subcommands here; the root and help
 command stay stable so players always have a discovery path.
 
 ---
@@ -50,15 +50,15 @@ import org.almond.minecraftgit.config.ModConfig;
 
 | Import | Purpose |
 |--------|---------|
-| `CommandDispatcher` | TODO: describe purpose |
-| `LiteralArgumentBuilder` | TODO: describe purpose |
-| `CommandContext` | TODO: describe purpose |
-| `ClientCommandManager` | TODO: describe purpose |
-| `FabricClientCommandSource` | TODO: describe purpose |
-| `FabricLoader` | TODO: describe purpose |
-| [`MinecraftGit`](../../../../../../../main/java/org/almond/minecraftgit/MinecraftGit.md) | TODO: describe purpose |
-| [`GitServices`](../GitServices.md) | TODO: describe purpose |
-| [`ModConfig`](../../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | TODO: describe purpose |
+| `CommandDispatcher` | registers the assembled `/git` literal tree with Brigadier |
+| `LiteralArgumentBuilder` | builds the root and `config` literals that subcommands are attached to |
+| `CommandContext` | lets `help` read the source of `/git` and `/git help` |
+| `ClientCommandManager` | Fabric factory for client literals and arguments |
+| `FabricClientCommandSource` | command source type used by registration and every handler |
+| `FabricLoader` | reads mod metadata for `/git version` |
+| [`MinecraftGit`](../../../../../../../main/java/org/almond/minecraftgit/MinecraftGit.md) | supplies `MOD_ID` for the mod container lookup |
+| [`GitServices`](../GitServices.md) | service graph threaded through registration and handlers |
+| [`ModConfig`](../../../../../../../main/java/org/almond/minecraftgit/config/ModConfig.md) | typed settings read and toggled by the config commands |
 
 ---
 
@@ -68,6 +68,7 @@ import org.almond.minecraftgit.config.ModConfig;
 public final class GitCommand {
 ```
 
+- **`final` with a private constructor** — a static command-registration facade; it holds no state and exists only to build the `/git` tree once per client session.
 
 ---
 
@@ -77,7 +78,7 @@ public final class GitCommand {
 private GitCommand()
 ```
 
-TODO: Provide detailed design explanation for `GitCommand`.
+Private constructor marks a pure static facade: the class holds no state, so the command tree is built entirely from the arguments of `register`.
 
 ---
 
@@ -87,7 +88,7 @@ TODO: Provide detailed design explanation for `GitCommand`.
 public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `register`.
+Builds bottom-up: first the `config` literal with a default `show` action plus `show`, `debug` and `blocks`, then `RepoCommands.attachConfig(config, services)` for settings such as `author`; then the `git` root with default help, `help`, `version`, `config` and a root-level `debug` alias. Feature modules attach their literals to the same root in sequence (`RepoCommands`, `SelectionCommands`, `StagingCommands`, `CommitCommands`, `StatusCommands`, `PullCommands`), and `dispatcher.register(root)` publishes the tree. Keeping the root/help nodes stable guarantees discovery even as phases add commands.
 
 ---
 
@@ -97,7 +98,7 @@ TODO: Provide detailed design explanation for `register`.
 private static int help(CommandContext<FabricClientCommandSource> context, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `help`.
+Uses `CommandSupport.run` so any feedback failure is reported rather than escaping. Sends the fixed catalogue with `Messages.raw` (title styled aqua), including all currently attached subcommands, the single-player note and `services.root()`. The handler does not inspect arguments; both `/git` and `/git help` execute the same code.
 
 ---
 
@@ -107,7 +108,7 @@ TODO: Provide detailed design explanation for `help`.
 private static int version(FabricClientCommandSource source, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `version`.
+Looks up the `minecraftgit` and `minecraft` containers with `FabricLoader`; missing containers degrade to `development`/`unknown` instead of failing. Output is one `Messages.send` line so it carries the configured prefix.
 
 ---
 
@@ -117,7 +118,7 @@ TODO: Provide detailed design explanation for `version`.
 private static int showConfig(FabricClientCommandSource source, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `showConfig`.
+Read-only reporting path: obtains `services.config()` and prints data root, branch/remote, wand/prefix, committer, limits, apply settings and debug flags via `Messages.raw`. No config mutation or save occurs, so it is safe to run at any time.
 
 ---
 
@@ -127,7 +128,7 @@ TODO: Provide detailed design explanation for `showConfig`.
 private static int toggleDebug(FabricClientCommandSource source, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `toggleDebug`.
+Mutates `config.debug`, applies it to `DebugLogger.setEnabled`, then calls `config.save()` (an atomic write in `ModConfig`). The confirmation includes the debug log path only when enabling. Because this runs on the client thread, the logger flag changes before any later command logs.
 
 ---
 
@@ -137,6 +138,6 @@ TODO: Provide detailed design explanation for `toggleDebug`.
 private static int toggleBlocks(FabricClientCommandSource source, GitServices services)
 ```
 
-TODO: Provide detailed design explanation for `toggleBlocks`.
+Mutates `config.debugBlocks` and mirrors it with `DebugLogger.setBlocks`, then saves. The confirmation reminds the player that block logging also needs `/git config debug` when general debug is off.
 
 ---

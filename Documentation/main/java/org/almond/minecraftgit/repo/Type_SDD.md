@@ -14,13 +14,19 @@
 
 ## Usage
 
-TODO: Describe how `Type` is instantiated and used.
+Read by `PullCommands` after `planPull` returns: `UP_TO_DATE` short-circuits the command, `FAST_FORWARD` triggers applying the remote snapshot to the world followed by `RepoService.fastForward`, and `DIVERGED` aborts with a message instead of writing anything. The enum lives inside `PullPlan` so a plan cannot exist without its classification.
+
+```java
+if (plan.type() == PullPlan.Type.DIVERGED) {
+    throw new RepoException("Local and remote histories have diverged; resolve manually.");
+}
+```
 
 ---
 
 ## 1. Overview
 
-TODO: Provide a high-level overview of `Type`.
+`PullPlan.Type` describes the relationship between the local branch and its remote counterpart after a fetch, using JGit's ancestry walk. The three states map directly to the three possible pull outcomes: nothing to do, a safe pointer move, or a conflict the mod refuses to automate. A pristine bootstrap commit is deliberately reported as `FAST_FORWARD` even though the histories are technically unrelated, so that pulling a build into a freshly initialized world works. `PullPlan` pairs the enum with the commit ids and merge base so the decision and the data it was made from travel together.
 
 ---
 
@@ -36,7 +42,7 @@ import org.eclipse.jgit.lib.ObjectId;
 
 | Import | Purpose |
 |--------|---------|
-| `ObjectId` | TODO: describe purpose |
+| `ObjectId` | Type of the `localHead`, `remoteHead` and `mergeBase` components of the enclosing `PullPlan` record. |
 
 ---
 
@@ -46,6 +52,7 @@ import org.eclipse.jgit.lib.ObjectId;
 public enum Type {
 ```
 
+Nested inside the `PullPlan` record and implicitly `static`; the enum constants are the complete classification vocabulary, and because the type is nested, callers refer to `PullPlan.Type`. It carries no fields or methods of its own — the only behaviour (`canFastForward`) lives on the enclosing record.
 
 ---
 
@@ -57,7 +64,7 @@ public record PullPlan(String remote, String branch, ObjectId localHead, ObjectI
 ```
 
 A fetch plus the relationship between local and remote branches. The caller
-may apply the remote snapshots to the world before {@link RepoService#fastForward}
+may apply the remote snapshots to the world before `RepoService.fastForward`
 moves the local branch, so a failed world write never leaves Git ahead of the
 world.
 
@@ -69,6 +76,6 @@ world.
 public boolean canFastForward()
 ```
 
-TODO: Provide detailed design explanation for `canFastForward`.
+The single behavioural method on the record: `return type == Type.FAST_FORWARD;`. It keeps callers from comparing enum constants directly and gives `RepoService.fastForward` a single guard to re-check before performing a hard reset to `remoteHead`. `null` types cannot occur because `planPull` always assigns a constant.
 
 ---
