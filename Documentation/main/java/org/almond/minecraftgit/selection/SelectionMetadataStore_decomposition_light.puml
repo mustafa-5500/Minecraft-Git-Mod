@@ -1,0 +1,164 @@
+@startuml
+
+'
+' Light theme
+'
+
+'
+' Colors
+'
+!$color_bg = "#FFFFFF"
+!$color_fg = "#000000"
+!$color_arrow = "#6b7280"
+
+!$color_primary = "#333333"
+!$color_sydd_bg = "#f0f7ff"
+!$color_sydd_border = "#a9baccff"
+!$color_sydd_main_border = "#2b6cb0"
+
+!$color_srs_bg = "#fffbea"
+!$color_srs_border = "#b7791f"
+
+!$color_component_bg = "#e2e8f0"
+!$color_component_border = "#4a5568"
+!$color_external_component_bg = "#8eb2c0"
+!$color_external_component_border = "#355360"
+
+skinparam {
+  BackgroundColor $color_bg
+
+  DefaultFontName "Segoe UI"
+  DefaultFontColor $color_fg
+
+  ArrowColor $color_arrow
+  ArrowFontSize 10
+  ArrowFontStyle bold
+
+  RectangleBackgroundColor $color_bg
+  RectangleBorderColor $color_primary
+  RectangleBorderThickness 2
+
+  ComponentBackgroundColor $color_sydd_bg
+  ComponentBorderColor $color_sydd_main_border
+  ComponentBorderThickness 2
+
+  ComponentStereotypeFontColor $color_fg
+  Shadowing false
+}
+
+skinparam rectangle<<ZC>> {
+  BackgroundColor $color_bg
+  BorderColor $color_primary
+  BorderThickness 2
+}
+
+skinparam rectangle<<SyDD>> {
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+skinparam rectangle<<SyDDMain>> {
+  FontStyle plain
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_main_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRS>> {
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRSMain>> {
+  FontStyle plain
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam component<<External>> {
+  BackgroundColor $color_external_component_bg
+  BorderColor $color_external_component_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #dbeafe
+  BorderColor #2b6cb0
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #eff6ff
+  BorderColor #5b7fb6
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #f8fbff
+  BorderColor #6b8bbd
+  BorderThickness 1
+}
+
+hide stereotype
+left to right direction
+title Function Call Decomposition: main/java/org/almond/minecraftgit/selection/SelectionMetadataStore.java
+skinparam packageStyle rectangle
+
+rectangle "SelectionMetadataStore.java" <<FileLevel>> as file_SelectionMetadataStore {
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_SelectionMetadataStore {
+    component "SelectionMetadataStore.java::<b>SelectionMetadataStore()</b>" <<FunctionLevel>> as m_1
+    component "SelectionMetadataStore.java::<b>file()</b>" <<FunctionLevel>> as m_2
+    component "SelectionMetadataStore.java::<b>load()</b>" <<FunctionLevel>> as m_3
+    component "SelectionMetadataStore.java::<b>loadAll()</b>" <<FunctionLevel>> as m_4
+    component "SelectionMetadataStore.java::<b>loadFile()</b>" <<FunctionLevel>> as m_5
+    component "SelectionMetadataStore.java::<b>ownerFromFileName()</b>" <<FunctionLevel>> as m_6
+    component "SelectionMetadataStore.java::<b>save()</b>" <<FunctionLevel>> as m_7
+  }
+}
+
+cloud "SelectionException()" as ext_7
+cloud "add()" as ext_10
+cloud "byName()" as ext_8
+cloud "list()" as ext_5
+cloud "normalize()" as ext_1
+cloud "of()" as ext_4
+cloud "readString()" as ext_9
+cloud "resolve()" as ext_2
+cloud "safeWorldName()" as ext_3
+cloud "toJson()" as ext_12
+cloud "toString()" as ext_6
+cloud "writeString()" as ext_11
+
+m_1 --> ext_1
+m_2 --> ext_2
+m_2 --> ext_3
+m_3 <--> m_5
+m_3 <--> m_2
+m_4 --> ext_2
+m_4 --> ext_3
+m_4 --> ext_4
+m_4 --> ext_5
+m_4 --> ext_6
+m_4 <--> m_6
+m_4 <--> m_5
+m_4 --> ext_7
+m_4 --> ext_8
+m_5 --> ext_9
+m_5 --> ext_10
+m_5 --> ext_1
+m_5 --> ext_7
+m_6 --> ext_6
+m_7 <--> m_2
+m_7 --> ext_6
+m_7 --> ext_10
+m_7 --> ext_11
+m_7 --> ext_12
+m_7 --> ext_7
+@enduml

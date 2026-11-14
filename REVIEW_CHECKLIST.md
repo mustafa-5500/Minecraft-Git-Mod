@@ -5,8 +5,8 @@ The checklist file itself is intentionally not listed.
 
 ## Implementation guide
 
-- [ ] `Documentation/Implementation/01-Overview.md` — Added the high-level system overview, feature map, runtime topology, constraints, technology and data locations.
-- [ ] `Documentation/Implementation/02-Architecture.md` — Added the layer/package architecture, service graph, threading model, lifecycle and extension points.
+- [x] [`Documentation/Implementation/01-Overview.md`](./Documentation/Implementation/01-Overview.md) — Added the high-level system overview, feature map, runtime topology, constraints, technology and data locations.
+- [ ] [`Documentation/Implementation/02-Architecture.md`](./Documentation/Implementation/02-Architecture.md) — Added the layer/package architecture, service graph, threading model, lifecycle and extension points.
 - [ ] `Documentation/Implementation/03-Data-Model-and-Format.md` — Added coordinate/data-model semantics, repository and local storage formats, config schema and invariants.
 - [ ] `Documentation/Implementation/04-Workflows.md` — Added end-to-end workflows for init, selections, staging, commit, status/diff, pull/apply/abort, checkout and remote operations.
 - [ ] `Documentation/Implementation/05-Low-Level-Data-Flow.md` — Added cross-class function-level data-flow tables for every major workflow.

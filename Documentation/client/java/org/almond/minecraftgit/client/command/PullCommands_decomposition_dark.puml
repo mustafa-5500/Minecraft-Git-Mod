@@ -1,0 +1,1151 @@
+@startuml
+
+'
+' One Dark theme
+'
+
+'
+' Colors
+'
+' Foreground
+!$color_bg = "#282c34"
+!$color_bg_light = "#424856"
+
+' Background
+!$color_fg = "#abb2bf"
+
+!$color_red = "#e06c75"
+!$color_green = "#98c379"
+!$color_yellow = "#e5c07b"
+!$color_blue = "#61afef"
+!$color_purple = "#c678dd"
+!$color_teal = "#56b6c2"
+
+!$color_primary = $color_blue
+
+skinparam backgroundColor $color_bg
+
+skinparam {
+  '
+  ' Activity
+  '
+  ActivityBackgroundColor $color_bg_light
+  ActivityBarColor $color_fg
+  ActivityBorderColor $color_primary
+  ' ActivityBorderThickness
+  ActivityDiamondBackgroundColor $color_bg_light
+  ActivityDiamondBorderColor $color_primary
+  ' ActivityDiamondFontColor
+  ' ActivityDiamondFontName
+  ' ActivityDiamondFontSize
+  ' ActivityDiamondFontStyle
+  ActivityEndColor $color_red
+  ' ActivityFontColor
+  ' ActivityFontName
+  ' ActivityFontSize
+  ' ActivityFontStyle
+  ActivityStartColor $color_green
+  ActivityStopColor $color_red
+
+  '
+  ' Actor
+  '
+  ActorBackgroundColor $color_bg_light
+  ActorBorderColor $color_primary
+  ' ActorFontColor
+  ' ActorFontName
+  ' ActorFontSize
+  ' ActorFontStyle
+  ActorStereotypeFontColor $color_fg
+  ' ActorStereotypeFontName
+  ' ActorStereotypeFontSize
+  ' ActorStereotypeFontStyle
+
+  '
+  ' Agent
+  '
+  AgentBackgroundColor $color_bg_light
+  AgentBorderColor $color_primary
+  ' AgentBorderThickness
+  ' AgentFontColor
+  ' AgentFontName
+  ' AgentFontSize
+  ' AgentFontStyle
+  ' AgentStereotypeFontColor
+  ' AgentStereotypeFontName
+  ' AgentStereotypeFontSize
+  ' AgentStereotypeFontStyle
+
+  '
+  ' Archimate
+  '
+  ' ArchimateBackgroundColor
+  '
+  ' ArchimateBorderColor
+  '
+  ' ArchimateBorderThickness
+  ' ArchimateFontColor
+  '
+  ' ArchimateFontName
+  ' ArchimateFontSize
+  '
+  ' ArchimateFontStyle
+  '
+  ' ArchimateStereotypeFontColor
+  ' ArchimateStereotypeFontName
+  '
+  ' ArchimateStereotypeFontSize
+  ' ArchimateStereotypeFontStyle
+
+  '
+  ' Arrow
+  '
+  ArrowColor $color_primary
+  ' ArrowFontColor
+  ' ArrowFontName
+  ' ArrowFontSize
+  ' ArrowFontStyle
+  ' ArrowHeadColor
+  ' ArrowLollipopColor
+  ' ArrowMessageAlignment
+  ' ArrowThickness
+
+  '
+  ' Artifact
+  '
+  ArtifactBackgroundColor $color_bg_light
+  ArtifactBorderColor $color_primary
+  ' ArtifactFontColor
+  ' ArtifactFontName
+  ' ArtifactFontSize
+  ' ArtifactFontStyle
+  ' ArtifactStereotypeFontColor
+  ' ArtifactStereotypeFontName
+  ' ArtifactStereotypeFontSize
+  ' ArtifactStereotypeFontStyle
+
+  '
+  ' Background color
+  '
+  BackgroundColor $color_bg
+
+  '
+  ' Biddable (?)
+  '
+  ' BiddableBackgroundColor
+  ' BiddableBorderColor
+
+  '
+  ' Boundary
+  '
+  BoundaryBackgroundColor $color_bg_light
+  BoundaryBorderColor $color_primary
+  ' BoundaryFontColor
+  ' BoundaryFontName
+  ' BoundaryFontSize
+  ' BoundaryFontStyle
+  BoundaryStereotypeFontColor $color_fg
+  ' BoundaryStereotypeFontName
+  ' BoundaryStereotypeFontSize
+  ' BoundaryStereotypeFontStyle
+
+  '
+  ' Box padding
+  '
+  ' BoxPadding
+
+  '
+  ' Caption
+  '
+  CaptionFontColor $color_fg
+  ' CaptionFontName
+  ' CaptionFontSize
+  ' CaptionFontStyle
+
+  '
+  ' Card
+  '
+  CardBackgroundColor $color_bg_light
+  CardBorderColor $color_primary
+  ' CardBorderThickness
+  ' CardFontColor
+  ' CardFontName
+  ' CardFontSize
+  ' CardFontStyle
+  ' CardStereotypeFontColor
+  ' CardStereotypeFontName
+  ' CardStereotypeFontSize
+  ' CardStereotypeFontStyle
+
+  '
+  ' Circled character (in class header)
+  '
+  ' CircledCharacterFontColor
+  ' CircledCharacterFontName
+  ' CircledCharacterFontSize
+  ' CircledCharacterFontStyle
+  ' CircledCharacterRadius
+
+  '
+  ' Class attribute
+  '
+  ' ClassAttributeFontColor
+  ' ClassAttributeFontName
+  ' ClassAttributeFontSize
+  ' ClassAttributeFontStyle
+  ' ClassAttributeIconSize
+
+  '
+  ' Class
+  '
+  ClassBackgroundColor $color_bg_light
+  ClassBorderColor $color_fg
+  ' ClassBorderThickness
+  ' ClassFontColor
+  ' ClassFontName
+  ' ClassFontSize
+  ' ClassFontStyle
+
+  '
+  ' Class header
+  '
+  ' ClassHeaderBackgroundColor
+
+  '
+  ' Class stereotype
+  '
+  ' ClassStereotypeFontColor
+  ' ClassStereotypeFontName
+  ' ClassStereotypeFontSize
+  ' ClassStereotypeFontStyle
+
+  '
+  ' Cloud
+  '
+  CloudBackgroundColor $color_bg_light
+  CloudBorderColor $color_primary
+  ' CloudFontColor
+  ' CloudFontName
+  ' CloudFontSize
+  ' CloudFontStyle
+  ' CloudStereotypeFontColor
+  ' CloudStereotypeFontName
+  ' CloudStereotypeFontSize
+  ' CloudStereotypeFontStyle
+
+  '
+  ' Collections
+  '
+  CollectionsBackgroundColor $color_bg_light
+  CollectionsBorderColor $color_primary
+
+  ' TODO
+  ' ColorArrowSeparationSpace
+
+  '
+  ' Component
+  '
+  ComponentBackgroundColor $color_bg_light
+  ComponentBorderColor $color_primary
+  ' ComponentBorderThickness
+  ' ComponentFontColor
+  ' ComponentFontName
+  ' ComponentFontSize
+  ' ComponentFontStyle
+  ' ComponentStereotypeFontColor
+  ' ComponentStereotypeFontName
+  ' ComponentStereotypeFontSize
+  ' ComponentStereotypeFontStyle
+
+  ' ComponentStyle
+
+  '
+  ' Condition styles
+  '
+  ' ConditionEndStyle
+  ' ConditionStyle
+
+  '
+  ' Control
+  '
+  ControlBackgroundColor $color_bg_light
+  ControlBorderColor $color_primary
+  ControlFontColor $color_fg
+  ' ControlFontName
+  ' ControlFontSize
+  ' ControlFontStyle
+  ControlStereotypeFontColor $color_fg
+  ' ControlStereotypeFontName
+  ' ControlStereotypeFontSize
+  ' ControlStereotypeFontStyle
+
+  '
+  ' Database
+  '
+  DatabaseBackgroundColor $color_bg_light
+  DatabaseBorderColor $color_primary
+  ' DatabaseFontColor
+  ' DatabaseFontName
+  ' DatabaseFontSize
+  ' DatabaseFontStyle
+  ' DatabaseStereotypeFontColor
+  ' DatabaseStereotypeFontName
+  ' DatabaseStereotypeFontSize
+  ' DatabaseStereotypeFontStyle
+
+  '
+  ' Default font styles
+  '
+  DefaultFontColor $color_fg
+  ' https://github.com/twbs/bootstrap/blob/v4.5.3/scss/_variables.scss#L277
+  DefaultFontName -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"
+  ' DefaultFontSize
+  ' DefaultFontStyle
+
+  ' TODO: get this to work
+  ' https://github.com/twbs/bootstrap/blob/v4.5.3/scss/_variables.scss#L278
+  ' DefaultMonospacedFontName SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace
+
+  ' DefaultTextAlignment
+
+
+  '
+  ' Designed (?)
+  '
+  ' DesignedBackgroundColor
+  ' DesignedBorderColor
+  ' DesignedDomainBorderThickness
+  ' DesignedDomainFontColor
+  ' DesignedDomainFontName
+  ' DesignedDomainFontSize
+  ' DesignedDomainFontStyle
+  ' DesignedDomainStereotypeFontColor
+  ' DesignedDomainStereotypeFontName
+  ' DesignedDomainStereotypeFontSize
+  ' DesignedDomainStereotypeFontStyle
+
+  '
+  ' Diagram border
+  '
+  ' DiagramBorderColor
+  ' DiagramBorderThickness
+
+  '
+  ' Domain (?)
+  '
+  ' DomainBackgroundColor
+  ' DomainBorderColor
+  ' DomainBorderThickness
+  ' DomainFontColor
+  ' DomainFontName
+  ' DomainFontSize
+  ' DomainFontStyle
+  ' DomainStereotypeFontColor
+  ' DomainStereotypeFontName
+  ' DomainStereotypeFontSize
+  ' DomainStereotypeFontStyle
+
+  ' Dpi
+
+  '
+  ' Entity
+  '
+  EntityBackgroundColor $color_bg_light
+  EntityBorderColor $color_primary
+  ' EntityFontColor
+  ' EntityFontName
+  ' EntityFontSize
+  ' EntityFontStyle
+  ' EntityStereotypeFontColor
+
+  '
+  ' Entity stereotype
+  '
+  ' EntityStereotypeFontName
+  ' EntityStereotypeFontSize
+  ' EntityStereotypeFontStyle
+  '
+  ' EnumBackgroundColor
+
+  '
+  ' File
+  '
+  FileBackgroundColor $color_bg_light
+  FileBorderColor $color_primary
+  ' FileFontColor
+  ' FileFontName
+  ' FileFontSize
+  ' FileFontStyle
+
+  '
+  ' File stereotype
+  '
+  ' FileStereotypeFontColor
+  ' FileStereotypeFontName
+  ' FileStereotypeFontSize
+  ' FileStereotypeFontStyle
+
+  ' FixCircleLabelOverlapping
+
+  '
+  ' Folder
+  '
+  FolderBackgroundColor $color_bg_light
+  FolderBorderColor $color_primary
+  ' FolderFontColor
+  ' FolderFontName
+  ' FolderFontSize
+  ' FolderFontStyle
+
+  '
+  ' Folder stereotype
+  '
+  ' FolderStereotypeFontColor
+  ' FolderStereotypeFontName
+  ' FolderStereotypeFontSize
+  ' FolderStereotypeFontStyle
+  '
+  ' FooterFontColor
+  '
+  ' FooterFontName
+  ' FooterFontSize
+  '
+  ' FooterFontStyle
+
+  '
+  ' Frame
+  '
+  FrameBackgroundColor $color_bg_light
+  FrameBorderColor $color_primary
+  ' FrameFontColor
+  ' FrameFontName
+  ' FrameFontSize
+  ' FrameFontStyle
+  ' FrameStereotypeFontColor
+  ' FrameStereotypeFontName
+  ' FrameStereotypeFontSize
+  ' FrameStereotypeFontStyle
+
+  '
+  ' Hexagon
+  '
+  HexagonBackgroundColor $color_bg_light
+  HexagonBorderColor $color_primary
+
+  ' GenericDisplay
+  ' Guillemet
+  '
+  ' Handwritten
+  ' HeaderFontColor
+  '
+  ' HeaderFontName
+  ' HeaderFontSize
+  '
+  ' HeaderFontStyle
+  '
+  ' HyperlinkColor
+  ' HyperlinkUnderline
+  '
+  ' IconIEMandatoryColor
+  ' IconPackageBackgroundColor
+  '
+  ' IconPackageColor
+  '
+  ' IconPrivateBackgroundColor
+  ' IconPrivateColor
+  '
+  ' IconProtectedBackgroundColor
+  ' IconProtectedColor
+  '
+  ' IconPublicBackgroundColor
+  '
+  ' IconPublicColor
+
+  '
+  ' Interface
+  '
+  InterfaceBackgroundColor $color_bg_light
+  InterfaceBorderColor $color_primary
+  ' InterfaceFontColor
+  ' InterfaceFontName
+  ' InterfaceFontSize
+  ' InterfaceFontStyle
+  ' InterfaceStereotypeFontColor
+  ' InterfaceStereotypeFontName
+  ' InterfaceStereotypeFontSize
+  ' InterfaceStereotypeFontStyle
+
+  '
+  ' Legend
+  '
+  LegendBackgroundColor $color_bg_light
+  LegendBorderColor $color_fg
+  ' LegendBorderThickness
+  ' LegendFontColor
+  ' LegendFontName
+  ' LegendFontSize
+  ' LegendFontStyle
+
+  ' LexicalBackgroundColor
+  '
+  ' LexicalBorderColor
+  '
+  ' LifelineStrategy
+  ' Linetype
+  '
+  ' MachineBackgroundColor
+  ' MachineBorderColor
+  '
+  ' MachineBorderThickness
+  '
+  ' MachineFontColor
+  ' MachineFontName
+  '
+  ' MachineFontSize
+  ' MachineFontStyle
+  '
+  ' MachineStereotypeFontColor
+  '
+  ' MachineStereotypeFontName
+  ' MachineStereotypeFontSize
+  '
+  ' MachineStereotypeFontStyle
+  ' MaxAsciiMessageLength
+  '
+  ' MaxMessageSize
+  '
+  ' MinClassWidth
+  ' Monochrome
+
+  '
+  ' Node
+  '
+  NodeBackgroundColor $color_bg_light
+  NodeBorderColor $color_primary
+  ' NodeFontColor
+  ' NodeFontName
+  ' NodeFontSize
+  ' NodeFontStyle
+  ' NodeStereotypeFontColor
+  ' NodeStereotypeFontName
+  ' NodeStereotypeFontSize
+  ' NodeStereotypeFontStyle
+
+  ' Nodesep
+
+  '
+  ' Note
+  '
+  NoteBackgroundColor $color_yellow
+  NoteBorderColor $color_bg
+  ' NoteBorderThickness
+  NoteFontColor $color_bg
+  ' NoteFontName
+  ' NoteFontSize
+  ' NoteFontStyle
+  ' NoteShadowing
+  ' NoteTextAlignment
+
+  '
+  ' Object
+  '
+  ' ObjectAttributeFontColor
+  ' ObjectAttributeFontName
+  ' ObjectAttributeFontSize
+  ' ObjectAttributeFontStyle
+  ObjectBackgroundColor $color_bg_light
+  ObjectBorderColor $color_primary
+  ' ObjectBorderThickness
+  ' ObjectFontColor
+  ' ObjectFontName
+  ' ObjectFontSize
+  ' ObjectFontStyle
+  ' ObjectStereotypeFontColor
+  ' ObjectStereotypeFontName
+  ' ObjectStereotypeFontSize
+  ' ObjectStereotypeFontStyle
+
+  '
+  ' Package
+  '
+  PackageBackgroundColor $color_bg
+  PackageBorderColor $color_primary
+  ' PackageBorderThickness
+  ' PackageFontColor
+  ' PackageFontName
+  ' PackageFontSize
+  ' PackageFontStyle
+  ' PackageStereotypeFontColor
+  ' PackageStereotypeFontName
+  ' PackageStereotypeFontSize
+  ' PackageStereotypeFontStyle
+
+  ' PackageStyle
+  '
+  ' PackageTitleAlignment
+  '
+  ' Padding
+  ' PageBorderColor
+  '
+  ' PageExternalColor
+  ' PageMargin
+
+  '
+  ' Participant
+  '
+  ParticipantBackgroundColor $color_bg_light
+  ParticipantBorderColor $color_primary
+  ' ParticipantFontColor
+  ' ParticipantFontName
+  ' ParticipantFontSize
+  ' ParticipantFontStyle
+  ' ParticipantPadding
+  ' ParticipantStereotypeFontColor
+  ' ParticipantStereotypeFontName
+  ' ParticipantStereotypeFontSize
+  ' ParticipantStereotypeFontStyle
+
+  '
+  ' Partition
+  '
+  PartitionBackgroundColor transparent
+  PartitionBorderColor $color_fg
+  ' PartitionBorderThickness
+  ' PartitionFontColor
+  ' PartitionFontName
+  ' PartitionFontSize
+  ' PartitionFontStyle
+
+  ' PathHoverColor
+
+  '
+  ' Person
+  '
+  PersonBackgroundColor $color_bg_light
+  PersonBorderColor $color_primary
+
+  '
+  ' Queue
+  '
+  QueueBackgroundColor $color_bg_light
+  QueueBorderColor $color_primary
+  ' QueueBorderThickness
+  ' QueueFontColor
+  ' QueueFontName
+  ' QueueFontSize
+  ' QueueFontStyle
+  ' QueueStereotypeFontColor
+  ' QueueStereotypeFontName
+  ' QueueStereotypeFontSize
+  ' QueueStereotypeFontStyle
+
+  ' Ranksep
+
+  '
+  ' Rectangle
+  '
+  RectangleBackgroundColor $color_bg_light
+  RectangleBorderColor $color_primary
+  ' RectangleBorderThickness
+  ' RectangleFontColor
+  ' RectangleFontName
+  ' RectangleFontSize
+  ' RectangleFontStyle
+  ' RectangleStereotypeFontColor
+  ' RectangleStereotypeFontName
+  ' RectangleStereotypeFontSize
+  ' RectangleStereotypeFontStyle
+
+  ' RequirementBackgroundColor
+  '
+  ' RequirementBorderColor
+  ' RequirementBorderThickness
+  '
+  ' RequirementFontColor
+  '
+  ' RequirementFontName
+  ' RequirementFontSize
+  '
+  ' RequirementFontStyle
+  ' RequirementStereotypeFontColor
+  '
+  ' RequirementStereotypeFontName
+  '
+  ' RequirementStereotypeFontSize
+  ' RequirementStereotypeFontStyle
+  '
+  ' ResponseMessageBelowArrow
+
+  ' RoundCorner
+
+  ' SameClassWidth
+  '
+  ' SequenceActorBorderThickness
+  ' SequenceArrowThickness
+
+  '
+  ' Sequence box
+  '
+  SequenceBoxBackgroundColor $color_bg_light
+  SequenceBoxBorderColor $color_primary
+  ' SequenceBoxFontColor
+  ' SequenceBoxFontName
+  ' SequenceBoxFontSize
+  ' SequenceBoxFontStyle
+
+  '
+  ' Sequence delay
+  '
+  ' SequenceDelayFontColor
+  ' SequenceDelayFontName
+  ' SequenceDelayFontSize
+  ' SequenceDelayFontStyle
+
+  '
+  ' Sequence divider
+  '
+  SequenceDividerBackgroundColor $color_bg_light
+  SequenceDividerBorderColor $color_fg
+  ' SequenceDividerBorderThickness
+  ' SequenceDividerFontColor
+  ' SequenceDividerFontName
+  ' SequenceDividerFontSize
+  ' SequenceDividerFontStyle
+
+  '
+  ' Sequence group
+  '
+  SequenceGroupBackgroundColor $color_bg_light
+  ' SequenceGroupBodyBackgroundColor
+  SequenceGroupBorderColor $color_fg
+  ' SequenceGroupBorderThickness
+  ' SequenceGroupFontColor
+  ' SequenceGroupFontName
+  ' SequenceGroupFontSize
+  ' SequenceGroupFontStyle
+  ' SequenceGroupHeaderFontColor
+  ' SequenceGroupHeaderFontName
+  ' SequenceGroupHeaderFontSize
+  ' SequenceGroupHeaderFontStyle
+
+  '
+  ' Sequence lifeline
+  '
+  SequenceLifeLineBackgroundColor $color_bg
+  SequenceLifeLineBorderColor $color_primary
+  ' SequenceLifeLineBorderThickness
+
+  '
+  ' Sequence message
+  '
+  ' SequenceMessageAlignment
+  ' SequenceMessageTextAlignment
+  SequenceNewpageSeparatorColor $color_fg
+
+  '
+  ' Sequence participant
+  '
+  ' SequenceParticipant
+  ' SequenceParticipantBorderThickness
+
+  '
+  ' Sequence reference
+  '
+  ' SequenceReferenceAlignment
+  SequenceReferenceBackgroundColor transparent
+  SequenceReferenceBorderColor $color_fg
+  ' SequenceReferenceBorderThickness
+  ' SequenceReferenceFontColor
+  ' SequenceReferenceFontName
+  ' SequenceReferenceFontSize
+  ' SequenceReferenceFontStyle
+  SequenceReferenceHeaderBackgroundColor $color_bg_light
+
+  '
+  ' Sequence stereotype
+  '
+  ' SequenceStereotypeFontColor
+  ' SequenceStereotypeFontName
+  ' SequenceStereotypeFontSize
+  ' SequenceStereotypeFontStyle
+
+  '
+  ' Shadowing
+  '
+  Shadowing false
+
+  '
+  ' Stack
+  '
+  StackBackgroundColor $color_bg_light
+  StackBorderColor $color_primary
+  ' StackFontColor
+  ' StackFontName
+  ' StackFontSize
+  ' StackFontStyle
+  ' StackStereotypeFontColor
+  ' StackStereotypeFontName
+  ' StackStereotypeFontSize
+  ' StackStereotypeFontStyle
+
+  ' StateAttributeFontColor
+  ' StateAttributeFontName
+  '
+  ' StateAttributeFontSize
+  ' StateAttributeFontStyle
+
+  '
+  ' State
+  '
+  StateBackgroundColor $color_bg_light
+  StateBorderColor $color_primary
+  StateEndColor $color_red
+  ' StateFontColor
+  ' StateFontName
+  ' StateFontSize
+  ' StateFontStyle
+  ' StateMessageAlignment
+  StateStartColor $color_green
+
+  '
+  ' Stereotype
+  '
+  ' StereotypeABackgroundColor
+  ' StereotypeABorderColor
+  ' StereotypeCBackgroundColor
+  ' StereotypeCBorderColor
+  ' StereotypeEBackgroundColor
+  ' StereotypeEBorderColor
+  ' StereotypeIBackgroundColor
+  ' StereotypeIBorderColor
+  ' StereotypeNBackgroundColor
+  ' StereotypeNBorderColor
+  ' StereotypePosition
+
+  '
+  ' Storage
+  '
+  StorageBackgroundColor $color_bg_light
+  StorageBorderColor $color_fg
+  ' StorageFontColor
+  ' StorageFontName
+  ' StorageFontSize
+  ' StorageFontStyle
+  ' StorageStereotypeFontColor
+  ' StorageStereotypeFontName
+  ' StorageStereotypeFontSize
+  ' StorageStereotypeFontStyle
+
+  ' Style
+  ' SvglinkTarget
+
+  '
+  ' Swimlane
+  '
+  SwimlaneBorderColor $color_fg
+  ' SwimlaneBorderThickness
+  ' SwimlaneTitleBackgroundColor
+  ' SwimlaneTitleFontColor
+  ' SwimlaneTitleFontName
+  ' SwimlaneTitleFontSize
+  ' SwimlaneTitleFontStyle
+  ' SwimlaneWidth
+  ' SwimlaneWrapTitleWidth
+
+  ' TabSize
+
+  '
+  ' Timing
+  '
+  ' TimingFontColor
+  ' TimingFontName
+  ' TimingFontSize
+  ' TimingFontStyle
+
+  '
+  ' Title
+  '
+  ' TitleBackgroundColor
+  ' TitleBorderColor
+  ' TitleBorderRoundCorner
+  ' TitleBorderThickness
+  ' TitleFontColor
+  ' TitleFontName
+  ' TitleFontSize
+  ' TitleFontStyle
+
+  '
+  ' Usecase
+  '
+  UsecaseBackgroundColor $color_bg_light
+  UsecaseBorderColor $color_primary
+  ' UsecaseBorderThickness
+  ' UsecaseFontColor
+  ' UsecaseFontName
+  ' UsecaseFontSize
+  ' UsecaseFontStyle
+  ' UsecaseStereotypeFontColor
+  ' UsecaseStereotypeFontName
+  ' UsecaseStereotypeFontSize
+  ' UsecaseStereotypeFontStyle
+
+  ' WrapWidth
+}
+
+
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #353b47
+  BorderColor #61afef
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #424856
+  BorderColor #7db7ec
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #4b5363
+  BorderColor #abb2bf
+  BorderThickness 1
+}
+
+hide stereotype
+left to right direction
+title Function Call Decomposition: client/java/org/almond/minecraftgit/client/command/PullCommands.java
+skinparam packageStyle rectangle
+
+rectangle "PullCommands.java" <<FileLevel>> as file_PullCommands {
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_PullCommands {
+    component "PullCommands.java::<b>PullCommands()</b>" <<FunctionLevel>> as m_1
+    component "PullCommands.java::<b>abort()</b>" <<FunctionLevel>> as m_2
+    component "PullCommands.java::<b>addCuboids()</b>" <<FunctionLevel>> as m_3
+    component "PullCommands.java::<b>applyNext()</b>" <<FunctionLevel>> as m_4
+    component "PullCommands.java::<b>attach()</b>" <<FunctionLevel>> as m_5
+    component "PullCommands.java::<b>checkout()</b>" <<FunctionLevel>> as m_6
+    component "PullCommands.java::<b>ensureSelection()</b>" <<FunctionLevel>> as m_7
+    component "PullCommands.java::<b>fail()</b>" <<FunctionLevel>> as m_8
+    component "PullCommands.java::<b>finishPull()</b>" <<FunctionLevel>> as m_9
+    component "PullCommands.java::<b>message()</b>" <<FunctionLevel>> as m_10
+    component "PullCommands.java::<b>names()</b>" <<FunctionLevel>> as m_11
+    component "PullCommands.java::<b>onPlan()</b>" <<FunctionLevel>> as m_12
+    component "PullCommands.java::<b>pull()</b>" <<FunctionLevel>> as m_13
+    component "PullCommands.java::<b>remoteFor()</b>" <<FunctionLevel>> as m_14
+    component "PullCommands.java::<b>requirePlayer()</b>" <<FunctionLevel>> as m_15
+    component "PullCommands.java::<b>resolve()</b>" <<FunctionLevel>> as m_16
+    component "PullCommands.java::<b>sendApplyResult()</b>" <<FunctionLevel>> as m_17
+    component "PullCommands.java::<b>shortId()</b>" <<FunctionLevel>> as m_18
+    component "PullCommands.java::<b>world()</b>" <<FunctionLevel>> as m_19
+  }
+}
+
+cloud "Cuboid()" as ext_18
+cloud "PullException()" as ext_2
+cloud "SelectionException()" as ext_54
+cloud "active()" as ext_56
+cloud "add()" as ext_17
+cloud "addCuboid()" as ext_20
+cloud "apply()" as ext_13
+cloud "asyncRun()" as ext_33
+cloud "backups()" as ext_3
+cloud "between()" as ext_24
+cloud "blockCount()" as ext_23
+cloud "blocks()" as ext_16
+cloud "branch()" as ext_44
+cloud "canFastForward()" as ext_48
+cloud "cleanup()" as ext_34
+cloud "complete()" as ext_30
+cloud "completeFuture()" as ext_12
+cloud "config()" as ext_53
+cloud "createAt()" as ext_36
+cloud "cuboidCount()" as ext_39
+cloud "current()" as ext_46
+cloud "delete()" as ext_21
+cloud "error()" as ext_41
+cloud "fastForward()" as ext_42
+cloud "file()" as ext_9
+cloud "find()" as ext_35
+cloud "get()" as ext_22
+cloud "hasOrigin()" as ext_28
+cloud "id()" as ext_5
+cloud "isEmpty()" as ext_15
+cloud "isInitialized()" as ext_27
+cloud "latest()" as ext_4
+cloud "list()" as ext_47
+cloud "messages()" as ext_7
+cloud "meta()" as ext_14
+cloud "metadata()" as ext_51
+cloud "name()" as ext_6
+cloud "origin()" as ext_32
+cloud "planPull()" as ext_50
+cloud "prepare()" as ext_49
+cloud "prepareCheckout()" as ext_31
+cloud "remote()" as ext_45
+cloud "remoteName()" as ext_52
+cloud "repos()" as ext_26
+cloud "restore()" as ext_10
+cloud "runInt()" as ext_1
+cloud "save()" as ext_38
+cloud "selectionManager()" as ext_55
+cloud "selections()" as ext_19
+cloud "send()" as ext_8
+cloud "service()" as ext_29
+cloud "setOrigin()" as ext_37
+cloud "setTracked()" as ext_40
+cloud "snapshot()" as ext_11
+cloud "success()" as ext_43
+cloud "summary()" as ext_57
+cloud "unwrap()" as ext_25
+cloud "warn()" as ext_58
+
+m_2 --> ext_1
+m_2 <--> m_15
+m_2 <--> m_19
+m_2 --> ext_2
+m_2 <--> m_16
+m_2 --> ext_3
+m_2 --> ext_4
+m_2 --> ext_5
+m_2 --> ext_6
+m_2 --> ext_7
+m_2 --> ext_8
+m_2 --> ext_9
+m_2 --> ext_10
+m_2 --> ext_11
+m_2 --> ext_12
+m_2 --> ext_13
+m_2 --> m_17
+m_3 --> ext_14
+m_3 --> ext_15
+m_3 --> ext_16
+m_3 --> ext_17
+m_3 --> ext_18
+m_3 --> ext_19
+m_3 --> ext_20
+m_3 --> ext_5
+m_3 --> ext_6
+m_3 --> ext_21
+m_4 <--> m_9
+m_4 --> ext_22
+m_4 <--> m_7
+m_4 --> ext_7
+m_4 --> ext_8
+m_4 --> ext_6
+m_4 --> ext_23
+m_4 --> ext_24
+m_4 --> ext_13
+m_4 --> m_8
+m_4 --> ext_25
+m_4 --> m_17
+m_4 --> m_4
+m_5 <--> m_13
+m_5 <--> m_2
+m_5 <--> m_11
+m_5 <--> m_6
+m_6 --> ext_1
+m_6 <--> m_15
+m_6 <--> m_19
+m_6 --> ext_2
+m_6 --> ext_26
+m_6 --> ext_27
+m_6 --> ext_5
+m_6 <--> m_16
+m_6 --> ext_28
+m_6 --> ext_6
+m_6 --> ext_29
+m_6 --> ext_7
+m_6 --> ext_8
+m_6 <--> m_18
+m_6 --> ext_30
+m_6 <--> m_13
+m_6 --> ext_31
+m_6 --> ext_24
+m_6 --> ext_32
+m_6 --> ext_12
+m_6 --> ext_13
+m_6 --> m_17
+m_6 --> ext_33
+m_6 --> ext_34
+m_7 --> ext_19
+m_7 --> ext_35
+m_7 --> ext_5
+m_7 --> ext_6
+m_7 --> ext_15
+m_7 --> ext_36
+m_7 --> ext_22
+m_7 --> ext_28
+m_7 --> ext_37
+m_7 --> ext_38
+m_7 --> ext_39
+m_7 --> m_3
+m_7 --> ext_40
+m_8 --> ext_33
+m_8 <--> m_13
+m_8 --> ext_34
+m_8 --> ext_7
+m_8 --> ext_41
+m_8 <--> m_10
+m_9 --> ext_30
+m_9 --> ext_42
+m_9 <--> m_13
+m_9 --> ext_34
+m_9 --> ext_7
+m_9 --> ext_41
+m_9 --> ext_15
+m_9 --> ext_43
+m_9 --> ext_44
+m_9 <--> m_18
+m_9 --> ext_45
+m_11 --> ext_46
+m_11 --> ext_19
+m_11 --> ext_47
+m_11 --> ext_5
+m_11 --> ext_6
+m_12 --> ext_7
+m_12 --> ext_8
+m_12 --> ext_45
+m_12 --> ext_44
+m_12 --> ext_48
+m_12 --> ext_2
+m_12 --> ext_30
+m_12 <--> m_13
+m_12 --> ext_49
+m_12 --> ext_5
+m_12 --> ext_15
+m_12 <--> m_9
+m_12 --> m_4
+m_13 --> ext_1
+m_13 <--> m_15
+m_13 <--> m_19
+m_13 --> ext_2
+m_13 --> ext_26
+m_13 --> ext_27
+m_13 --> ext_5
+m_13 --> ext_29
+m_13 <--> m_14
+m_13 --> ext_19
+m_13 --> ext_47
+m_13 --> ext_7
+m_13 --> ext_8
+m_13 --> ext_30
+m_13 --> ext_50
+m_13 --> m_12
+m_14 --> ext_26
+m_14 --> ext_51
+m_14 --> ext_5
+m_14 --> ext_52
+m_14 --> ext_53
+m_15 --> ext_54
+m_16 --> ext_55
+m_16 --> ext_56
+m_16 --> ext_54
+m_16 --> ext_19
+m_16 --> ext_22
+m_16 --> ext_5
+m_17 --> ext_7
+m_17 --> ext_43
+m_17 --> ext_57
+m_17 --> ext_58
+m_17 --> ext_22
+m_18 --> ext_6
+m_19 --> ext_46
+@enduml

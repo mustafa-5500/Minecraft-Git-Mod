@@ -1,0 +1,229 @@
+@startuml
+
+'
+' Light theme
+'
+
+'
+' Colors
+'
+!$color_bg = "#FFFFFF"
+!$color_fg = "#000000"
+!$color_arrow = "#6b7280"
+
+!$color_primary = "#333333"
+!$color_sydd_bg = "#f0f7ff"
+!$color_sydd_border = "#a9baccff"
+!$color_sydd_main_border = "#2b6cb0"
+
+!$color_srs_bg = "#fffbea"
+!$color_srs_border = "#b7791f"
+
+!$color_component_bg = "#e2e8f0"
+!$color_component_border = "#4a5568"
+!$color_external_component_bg = "#8eb2c0"
+!$color_external_component_border = "#355360"
+
+skinparam {
+  BackgroundColor $color_bg
+
+  DefaultFontName "Segoe UI"
+  DefaultFontColor $color_fg
+
+  ArrowColor $color_arrow
+  ArrowFontSize 10
+  ArrowFontStyle bold
+
+  RectangleBackgroundColor $color_bg
+  RectangleBorderColor $color_primary
+  RectangleBorderThickness 2
+
+  ComponentBackgroundColor $color_sydd_bg
+  ComponentBorderColor $color_sydd_main_border
+  ComponentBorderThickness 2
+
+  ComponentStereotypeFontColor $color_fg
+  Shadowing false
+}
+
+skinparam rectangle<<ZC>> {
+  BackgroundColor $color_bg
+  BorderColor $color_primary
+  BorderThickness 2
+}
+
+skinparam rectangle<<SyDD>> {
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+skinparam rectangle<<SyDDMain>> {
+  FontStyle plain
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_main_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRS>> {
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRSMain>> {
+  FontStyle plain
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam component<<External>> {
+  BackgroundColor $color_external_component_bg
+  BorderColor $color_external_component_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #dbeafe
+  BorderColor #2b6cb0
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #eff6ff
+  BorderColor #5b7fb6
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #f8fbff
+  BorderColor #6b8bbd
+  BorderThickness 1
+}
+
+hide stereotype
+left to right direction
+title Function Call Decomposition: main/java/org/almond/minecraftgit/selection/SelectionService.java
+skinparam packageStyle rectangle
+
+rectangle "SelectionService.java" <<FileLevel>> as file_SelectionService {
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_SelectionService {
+    component "SelectionService.java::<b>SelectionService()</b>" <<FunctionLevel>> as m_1
+    component "SelectionService.java::<b>addCuboid()</b>" <<FunctionLevel>> as m_2
+    component "SelectionService.java::<b>create()</b>" <<FunctionLevel>> as m_3
+    component "SelectionService.java::<b>createAt()</b>" <<FunctionLevel>> as m_4
+    component "SelectionService.java::<b>delete()</b>" <<FunctionLevel>> as m_5
+    component "SelectionService.java::<b>find()</b>" <<FunctionLevel>> as m_6
+    component "SelectionService.java::<b>get()</b>" <<FunctionLevel>> as m_7
+    component "SelectionService.java::<b>invalidate()</b>" <<FunctionLevel>> as m_8
+    component "SelectionService.java::<b>key()</b>" <<FunctionLevel>> as m_9
+    component "SelectionService.java::<b>list()</b>" <<FunctionLevel>> as m_10
+    component "SelectionService.java::<b>listAll()</b>" <<FunctionLevel>> as m_11
+    component "SelectionService.java::<b>load()</b>" <<FunctionLevel>> as m_12
+    component "SelectionService.java::<b>persist()</b>" <<FunctionLevel>> as m_13
+    component "SelectionService.java::<b>removeCuboid()</b>" <<FunctionLevel>> as m_14
+    component "SelectionService.java::<b>reorigin()</b>" <<FunctionLevel>> as m_15
+    component "SelectionService.java::<b>requireName()</b>" <<FunctionLevel>> as m_16
+    component "SelectionService.java::<b>root()</b>" <<FunctionLevel>> as m_17
+    component "SelectionService.java::<b>saturatedAdd()</b>" <<FunctionLevel>> as m_18
+    component "SelectionService.java::<b>save()</b>" <<FunctionLevel>> as m_19
+    component "SelectionService.java::<b>setTracked()</b>" <<FunctionLevel>> as m_20
+    component "SelectionService.java::<b>store()</b>" <<FunctionLevel>> as m_21
+    component "SelectionService.java::<b>tracked()</b>" <<FunctionLevel>> as m_22
+  }
+}
+
+cloud "Selection()" as ext_8
+cloud "SelectionException()" as ext_4
+cloud "SelectionMetadataStore()" as ext_1
+cloud "add()" as ext_9
+cloud "byName()" as ext_10
+cloud "cuboidCount()" as ext_3
+cloud "empty()" as ext_12
+cloud "isEmpty()" as ext_16
+cloud "isTracked()" as ext_17
+cloud "loadAll()" as ext_13
+cloud "name()" as ext_7
+cloud "ownerName()" as ext_6
+cloud "remove()" as ext_11
+cloud "removeCuboidAt()" as ext_14
+cloud "requireSelectionName()" as ext_15
+cloud "selectionsRoot()" as ext_2
+cloud "volume()" as ext_5
+
+m_1 --> ext_1
+m_1 --> ext_2
+m_2 <--> m_7
+m_2 --> ext_3
+m_2 --> ext_4
+m_2 <--> m_18
+m_2 --> ext_5
+m_2 <--> m_2
+m_2 --> m_13
+m_2 --> ext_6
+m_2 <--> m_12
+m_3 <--> m_4
+m_4 --> m_16
+m_4 <--> m_12
+m_4 --> ext_7
+m_4 --> ext_4
+m_4 --> ext_8
+m_4 --> ext_9
+m_4 --> ext_10
+m_4 --> m_13
+m_5 <--> m_12
+m_5 --> ext_7
+m_5 --> ext_4
+m_5 --> ext_11
+m_5 --> m_13
+m_5 --> ext_6
+m_6 --> ext_12
+m_6 <--> m_12
+m_6 --> ext_7
+m_7 <--> m_6
+m_7 --> ext_4
+m_8 --> ext_11
+m_8 <--> m_9
+m_10 <--> m_12
+m_11 --> ext_13
+m_12 <--> m_9
+m_12 <--> m_12
+m_13 --> ext_7
+m_13 --> m_19
+m_13 <--> m_9
+m_14 <--> m_7
+m_14 --> ext_3
+m_14 --> ext_4
+m_14 --> ext_14
+m_14 --> m_13
+m_14 --> ext_6
+m_14 <--> m_12
+m_15 <--> m_7
+m_15 --> ext_3
+m_15 --> ext_4
+m_15 <--> m_15
+m_15 --> m_13
+m_15 --> ext_6
+m_15 <--> m_12
+m_16 --> ext_15
+m_16 --> ext_4
+m_17 --> ext_2
+m_19 <--> m_12
+m_19 --> ext_16
+m_19 <--> m_7
+m_19 --> ext_6
+m_19 --> m_13
+m_20 <--> m_7
+m_20 --> m_20
+m_20 --> m_13
+m_20 --> ext_6
+m_20 <--> m_12
+m_22 <--> m_12
+m_22 --> ext_17
+m_22 --> ext_9
+@enduml

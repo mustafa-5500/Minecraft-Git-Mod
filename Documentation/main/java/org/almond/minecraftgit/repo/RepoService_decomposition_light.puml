@@ -1,0 +1,383 @@
+@startuml
+
+'
+' Light theme
+'
+
+'
+' Colors
+'
+!$color_bg = "#FFFFFF"
+!$color_fg = "#000000"
+!$color_arrow = "#6b7280"
+
+!$color_primary = "#333333"
+!$color_sydd_bg = "#f0f7ff"
+!$color_sydd_border = "#a9baccff"
+!$color_sydd_main_border = "#2b6cb0"
+
+!$color_srs_bg = "#fffbea"
+!$color_srs_border = "#b7791f"
+
+!$color_component_bg = "#e2e8f0"
+!$color_component_border = "#4a5568"
+!$color_external_component_bg = "#8eb2c0"
+!$color_external_component_border = "#355360"
+
+skinparam {
+  BackgroundColor $color_bg
+
+  DefaultFontName "Segoe UI"
+  DefaultFontColor $color_fg
+
+  ArrowColor $color_arrow
+  ArrowFontSize 10
+  ArrowFontStyle bold
+
+  RectangleBackgroundColor $color_bg
+  RectangleBorderColor $color_primary
+  RectangleBorderThickness 2
+
+  ComponentBackgroundColor $color_sydd_bg
+  ComponentBorderColor $color_sydd_main_border
+  ComponentBorderThickness 2
+
+  ComponentStereotypeFontColor $color_fg
+  Shadowing false
+}
+
+skinparam rectangle<<ZC>> {
+  BackgroundColor $color_bg
+  BorderColor $color_primary
+  BorderThickness 2
+}
+
+skinparam rectangle<<SyDD>> {
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+skinparam rectangle<<SyDDMain>> {
+  FontStyle plain
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_main_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRS>> {
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRSMain>> {
+  FontStyle plain
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam component<<External>> {
+  BackgroundColor $color_external_component_bg
+  BorderColor $color_external_component_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #dbeafe
+  BorderColor #2b6cb0
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #eff6ff
+  BorderColor #5b7fb6
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #f8fbff
+  BorderColor #6b8bbd
+  BorderThickness 1
+}
+
+hide stereotype
+left to right direction
+title Function Call Decomposition: main/java/org/almond/minecraftgit/repo/RepoService.java
+skinparam packageStyle rectangle
+
+rectangle "RepoService.java" <<FileLevel>> as file_RepoService {
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_RepoService {
+    component "RepoService.java::<b>FetchSummary()</b>" <<FunctionLevel>> as m_1
+    component "RepoService.java::<b>PushSummary()</b>" <<FunctionLevel>> as m_2
+    component "RepoService.java::<b>RepoService()</b>" <<FunctionLevel>> as m_3
+    component "RepoService.java::<b>authorEmail()</b>" <<FunctionLevel>> as m_4
+    component "RepoService.java::<b>authorName()</b>" <<FunctionLevel>> as m_5
+    component "RepoService.java::<b>close()</b>" <<FunctionLevel>> as m_6
+    component "RepoService.java::<b>commitAll()</b>" <<FunctionLevel>> as m_7
+    component "RepoService.java::<b>commitEmpty()</b>" <<FunctionLevel>> as m_8
+    component "RepoService.java::<b>commitWorkspace()</b>" <<FunctionLevel>> as m_9
+    component "RepoService.java::<b>configureAuthorLocked()</b>" <<FunctionLevel>> as m_10
+    component "RepoService.java::<b>currentBranch()</b>" <<FunctionLevel>> as m_11
+    component "RepoService.java::<b>currentBranchLocked()</b>" <<FunctionLevel>> as m_12
+    component "RepoService.java::<b>deleteRecursively()</b>" <<FunctionLevel>> as m_13
+    component "RepoService.java::<b>ensureOpenLocked()</b>" <<FunctionLevel>> as m_14
+    component "RepoService.java::<b>error()</b>" <<FunctionLevel>> as m_15
+    component "RepoService.java::<b>exportSelectionAt()</b>" <<FunctionLevel>> as m_16
+    component "RepoService.java::<b>fastForward()</b>" <<FunctionLevel>> as m_17
+    component "RepoService.java::<b>fetch()</b>" <<FunctionLevel>> as m_18
+    component "RepoService.java::<b>fetchLocked()</b>" <<FunctionLevel>> as m_19
+    component "RepoService.java::<b>firstLine()</b>" <<FunctionLevel>> as m_20
+    component "RepoService.java::<b>friendlyMessage()</b>" <<FunctionLevel>> as m_21
+    component "RepoService.java::<b>headCommit()</b>" <<FunctionLevel>> as m_22
+    component "RepoService.java::<b>headId()</b>" <<FunctionLevel>> as m_23
+    component "RepoService.java::<b>headObject()</b>" <<FunctionLevel>> as m_24
+    component "RepoService.java::<b>identityLocked()</b>" <<FunctionLevel>> as m_25
+    component "RepoService.java::<b>info()</b>" <<FunctionLevel>> as m_26
+    component "RepoService.java::<b>infoLocked()</b>" <<FunctionLevel>> as m_27
+    component "RepoService.java::<b>init()</b>" <<FunctionLevel>> as m_28
+    component "RepoService.java::<b>isInitialized()</b>" <<FunctionLevel>> as m_29
+    component "RepoService.java::<b>isPristineInitLocked()</b>" <<FunctionLevel>> as m_30
+    component "RepoService.java::<b>listSelectionsAt()</b>" <<FunctionLevel>> as m_31
+    component "RepoService.java::<b>listSelectionsAtLocked()</b>" <<FunctionLevel>> as m_32
+    component "RepoService.java::<b>log()</b>" <<FunctionLevel>> as m_33
+    component "RepoService.java::<b>open()</b>" <<FunctionLevel>> as m_34
+    component "RepoService.java::<b>path()</b>" <<FunctionLevel>> as m_35
+    component "RepoService.java::<b>planPull()</b>" <<FunctionLevel>> as m_36
+    component "RepoService.java::<b>push()</b>" <<FunctionLevel>> as m_37
+    component "RepoService.java::<b>remote()</b>" <<FunctionLevel>> as m_38
+    component "RepoService.java::<b>remoteAdd()</b>" <<FunctionLevel>> as m_39
+    component "RepoService.java::<b>remoteList()</b>" <<FunctionLevel>> as m_40
+    component "RepoService.java::<b>remoteRemove()</b>" <<FunctionLevel>> as m_41
+    component "RepoService.java::<b>requireRemoteLocked()</b>" <<FunctionLevel>> as m_42
+    component "RepoService.java::<b>requireValidRemoteName()</b>" <<FunctionLevel>> as m_43
+    component "RepoService.java::<b>resolve()</b>" <<FunctionLevel>> as m_44
+    component "RepoService.java::<b>safeResolve()</b>" <<FunctionLevel>> as m_45
+    component "RepoService.java::<b>setAuthor()</b>" <<FunctionLevel>> as m_46
+    component "RepoService.java::<b>stageAllLocked()</b>" <<FunctionLevel>> as m_47
+    component "RepoService.java::<b>statusLocked()</b>" <<FunctionLevel>> as m_48
+    component "RepoService.java::<b>toUri()</b>" <<FunctionLevel>> as m_49
+    component "RepoService.java::<b>writeBootstrapFiles()</b>" <<FunctionLevel>> as m_50
+  }
+}
+
+cloud "CommitInfo()" as ext_16
+cloud "PullPlan()" as ext_17
+cloud "RemoteInfo()" as ext_23
+cloud "RepoException()" as ext_6
+cloud "RepoInfo()" as ext_13
+cloud "add()" as ext_15
+cloud "branch()" as ext_9
+cloud "canFastForward()" as ext_8
+cloud "commit()" as ext_2
+cloud "contains()" as ext_11
+cloud "empty()" as ext_12
+cloud "get()" as ext_21
+cloud "isEmpty()" as ext_18
+cloud "isValidSelectionName()" as ext_14
+cloud "join()" as ext_19
+cloud "name()" as ext_3
+cloud "normalize()" as ext_1
+cloud "of()" as ext_10
+cloud "requireSelectionName()" as ext_7
+cloud "save()" as ext_5
+cloud "setName()" as ext_20
+cloud "setRemoteName()" as ext_24
+cloud "status()" as ext_25
+cloud "toString()" as ext_22
+cloud "write()" as ext_4
+cloud "writeString()" as ext_26
+
+m_3 --> ext_1
+m_3 <--> m_5
+m_3 <--> m_4
+m_6 --> m_6
+m_6 <--> m_33
+m_7 --> m_14
+m_7 --> m_47
+m_7 <--> m_48
+m_7 --> ext_2
+m_7 --> m_46
+m_7 <--> m_25
+m_7 <--> m_33
+m_7 --> ext_3
+m_7 <--> m_20
+m_7 <--> m_15
+m_8 <--> m_7
+m_9 --> m_14
+m_9 --> m_13
+m_9 <--> m_45
+m_9 --> ext_4
+m_9 --> m_47
+m_9 <--> m_48
+m_9 --> ext_2
+m_9 --> m_46
+m_9 <--> m_25
+m_9 <--> m_33
+m_9 --> ext_3
+m_9 <--> m_20
+m_9 <--> m_15
+m_10 --> ext_5
+m_10 <--> m_15
+m_11 --> m_14
+m_11 <--> m_12
+m_12 <--> m_15
+m_14 <--> m_29
+m_14 --> ext_6
+m_14 --> m_34
+m_14 --> m_10
+m_14 <--> m_33
+m_14 <--> m_15
+m_15 <--> m_21
+m_15 <--> m_33
+m_15 --> ext_6
+m_16 --> m_14
+m_16 --> ext_7
+m_16 --> ext_6
+m_16 --> m_13
+m_16 <--> m_44
+m_16 --> ext_1
+m_16 --> m_34
+m_16 --> ext_4
+m_16 <--> m_15
+m_16 --> ext_3
+m_17 --> m_14
+m_17 --> ext_8
+m_17 <--> m_12
+m_17 --> ext_9
+m_17 --> ext_6
+m_17 --> ext_3
+m_17 <--> m_33
+m_17 <--> m_15
+m_18 --> m_14
+m_18 <--> m_19
+m_18 --> m_1
+m_18 <--> m_15
+m_19 --> m_43
+m_19 --> m_42
+m_19 <--> m_18
+m_19 --> ext_10
+m_19 <--> m_33
+m_21 --> ext_11
+m_22 <--> m_33
+m_23 --> m_14
+m_23 <--> m_44
+m_23 --> ext_12
+m_23 --> ext_10
+m_23 --> ext_3
+m_23 <--> m_15
+m_24 --> m_14
+m_24 <--> m_44
+m_24 <--> m_15
+m_26 --> m_14
+m_26 <--> m_27
+m_27 <--> m_44
+m_27 <--> m_12
+m_27 --> ext_13
+m_27 --> ext_3
+m_27 <--> m_48
+m_27 <--> m_15
+m_28 <--> m_29
+m_28 --> m_14
+m_28 <--> m_27
+m_28 <--> m_28
+m_28 --> ext_9
+m_28 --> m_10
+m_28 --> m_50
+m_28 --> m_47
+m_28 --> ext_2
+m_28 --> m_46
+m_28 <--> m_25
+m_28 <--> m_33
+m_28 <--> m_12
+m_28 <--> m_15
+m_29 <--> m_44
+m_31 --> m_14
+m_31 <--> m_32
+m_31 <--> m_15
+m_31 --> ext_3
+m_32 --> ext_14
+m_32 --> ext_15
+m_33 --> m_14
+m_33 <--> m_44
+m_33 --> ext_10
+m_33 <--> m_33
+m_33 --> ext_15
+m_33 --> ext_16
+m_33 --> ext_3
+m_33 <--> m_20
+m_33 <--> m_15
+m_34 --> m_14
+m_36 --> m_14
+m_36 <--> m_19
+m_36 <--> m_12
+m_36 --> ext_6
+m_36 <--> m_44
+m_36 --> ext_17
+m_36 <--> m_30
+m_36 <--> m_15
+m_37 --> m_14
+m_37 --> m_43
+m_37 --> m_42
+m_37 <--> m_12
+m_37 --> ext_6
+m_37 <--> m_44
+m_37 <--> m_37
+m_37 --> ext_10
+m_37 --> ext_15
+m_37 --> ext_18
+m_37 --> ext_19
+m_37 --> ext_5
+m_37 <--> m_33
+m_37 --> m_2
+m_37 <--> m_15
+m_38 <--> m_40
+m_38 --> ext_3
+m_39 --> m_14
+m_39 --> m_43
+m_39 --> ext_6
+m_39 --> m_39
+m_39 --> ext_20
+m_39 <--> m_49
+m_39 --> ext_10
+m_39 --> ext_5
+m_39 <--> m_33
+m_39 <--> m_15
+m_40 --> m_14
+m_40 <--> m_40
+m_40 --> ext_18
+m_40 --> ext_21
+m_40 --> ext_22
+m_40 --> ext_15
+m_40 --> ext_23
+m_40 <--> m_15
+m_41 --> m_14
+m_41 --> m_43
+m_41 --> m_41
+m_41 --> ext_24
+m_41 <--> m_33
+m_41 <--> m_15
+m_42 --> ext_6
+m_43 --> ext_6
+m_44 --> m_14
+m_44 <--> m_44
+m_44 <--> m_15
+m_45 <--> m_44
+m_45 --> ext_1
+m_45 --> ext_6
+m_46 --> ext_6
+m_46 <--> m_29
+m_46 --> m_14
+m_46 --> m_10
+m_47 --> ext_15
+m_47 <--> m_15
+m_48 --> ext_25
+m_49 --> ext_22
+m_50 <--> m_44
+m_50 --> ext_26
+@enduml
